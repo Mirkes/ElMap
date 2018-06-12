@@ -4,13 +4,14 @@ classdef MapGeometry  < handle
     %   MapGeometry contains description of underlied map.
     
     properties (SetAccess = protected)
-        dimension   %map dimension
-        internal    %internal coordinates of nodes
-        mapped      %mapped coordinates of nodes
-        links       %edges of map. Each edge contains numbers of two nodes 
-                    %which are linked by this edge.
-        ribs        %list of map's ribs. Each rib contains numbers of three
-                    %nodes which form this rib.
+        dimension   % map dimension
+        internal    % internal coordinates of nodes
+        mapped      % mapped coordinates of nodes
+        links       % edges of map. Each edge contains numbers of two nodes 
+                    % which are linked by this edge.
+        ribs        % list of map's ribs. Each rib contains numbers of three
+                    % nodes which form this rib.
+        disp        % dispersion measure for PQSQ approach
     end
     
     methods
@@ -45,6 +46,13 @@ classdef MapGeometry  < handle
             %ribs is k-by-3 matrix. Each row contains three numbers of 
             %nodes which form this rib.
             ribs = map.ribs;
+        end
+        
+        function disp = getDisp(map)
+            %method to access disp of map
+            %disp is non-negative number which prsrnt the maximal distance
+            %from data point to nearest original node.
+            disp = map.disp;
         end
         
         function init(map, data, type)
@@ -102,7 +110,7 @@ classdef MapGeometry  < handle
                 mini = min(tmp);
                 maxi = max(tmp);
                 means = sum(tmp)/size(data,1);
-                disp = min([means-mini;maxi-means]);
+                disper = min([means-mini;maxi-means]);
                 means = sum(data)/size(data,1);
                 %Calculate mean and dispersion along internal coordinates
                 minI = min(map.internal);
@@ -110,12 +118,14 @@ classdef MapGeometry  < handle
                 meanS = sum(map.internal)/size(map.internal,1);
                 disP = min([meanS-minI;maxI-meanS]);
                 %auxiliary calculations
-                V = bsxfun(@times,V,disp./disP);
+                V = bsxfun(@times,V,disper./disP);
                 %final values
                 map.mapped=bsxfun(@plus,bsxfun(@minus, map.internal, meanS)*V',means);
             else
                 error(['type "' type '" is not recognized as valid type of initialization']);
             end
+            tmp = associate(map, map.mapped, data);
+            map.disp = sqrt(max(tmp));
         end
         
         function coord = project(map, points, type, kind)

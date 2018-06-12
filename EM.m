@@ -12,18 +12,18 @@ function EM(map, data, varargin)
 %       'type' is one of the following strings:
 %          'hard' is hard map with stretch = 1 and bend = 1
 %           'medium' is more flexible map with stretch = 0.7 and bend = 0.7
-%           'soft'  is soft map with stretch = 0.5 and bend = 0.5
+%           'soft' is soft map with stretch = 0.5 and bend = 0.5
 %           If 'type', 'stretch' and 'bending' are omitted then 'medium' is
 %           used. 
-%       'stretch' is a positive numeric value which is represent the value
-%           of stretching modulo or a function with syntax 
+%       'stretch' is a positive numeric value which is the value of
+%           stretching modulo or a function with syntax
 %               val = stretch( epoch )
 %           where epoch is number of epoch (see epoch definition below) and
 %           val is the nonnegative stretching modulo to use on specified
 %           epoch. Epochs are numerated from 1.
 %           Default value corresponds to type 'medium'
-%       'bend' is a positive numeric value which is represent the value of
-%           bending modulo or a function with syntax
+%       'bend' is a positive numeric value which is the value of the
+%           bending modulo or a function with syntax 
 %               val = bend( epoch )
 %           where epoch is number of epoch (see epoch definition below) and
 %           val is the bending modulo to use on specified epoch. Epochs are
@@ -31,16 +31,33 @@ function EM(map, data, varargin)
 %           Default value corresponds to type 'medium'
 %       'weights' is n-by-1 vector of weights for data points. Weights must
 %           be nonnegative.
+%       'intervals', intervals serves to specify user defined intervals.
+%           intervals is row vector. The first element must be zero. By
+%           default is created by usage of 'number_of_intervals' and
+%           'intshrinkage'. Maximal value M is calculated as maximum among
+%           data points of distance from data points to the nearest node of
+%           map after initiation. Then this value is multiplied by
+%           'intshrinkage'. All other boreders are calcualted as r(i) =
+%           M*i^2/p^2, where p is number_of_intervals'. Ignored if
+%           'potential' is not specified. 
+%       'Number_of_intervals' specifies the number of intervals to
+%           automatic interval calculation. Default value is 5. Ignored if
+%           'potential' is not specified. 
+%       'intshrinkage' is fraction of  maximal distance from data points to
+%           original map which is used for intervals shrinkage (see
+%           argument delta in defineIntervals). Default value is 1 (no
+%           shrinkage). Ignored if 'potential' is not specified.
+%       'potential' is majorant function for PQSQ. L2 distance without
+%           shrinkage is used if 'potential' is not specified.
 %
 % One epoch is fitting of map with fixed values of stretching and bending
-% modulo. THis process can include several iterations of two step
-% algorothm:
-%   1. associate each datapoint with nearest node.
+% modulo. This process can include several iterations of two step
+% algorithm:
+%   1. associate each data point with nearest node.
 %   2. recalculate node position.
 % Process of map fitting is stopped if new values of stratching and bending
-% modulo are the same as on previous epoch OR if both stratching and bending
-% modulo are zero.
-
+% modulo are the same as on previous epoch OR if both stratching and
+% bending modulo are zero.
 
     % Check the number of input attributes and types of the two first
     % attributes.
@@ -48,22 +65,27 @@ function EM(map, data, varargin)
         error('At least map and data must be specified');
     end    
     if ~isa(map,'MapGeometry')
-        error('Incorrect type of the first argument');
+        error('Incorrect type of the "map" argument, it must be MapGeometry');
     end
     if ~ismatrix(data) || ~isnumeric(data)
-        error('Incorrect type of the second argument');
+        error('Incorrect type of the "data" argument, data must be a matrix');
     end
     
     % Get sizes of data
     [n, dim] = size(data);
-    
-    % Decode varargin
+
+    % Default values of customisable variables
     strFun = @constStretch;
     constStretching = 0.7;
     bendFun = @constBend;
     constBending = 0.7;
     weights = [];
+    func = [];
+    intervals = [];
+    nInt = 5;
+    delta = 1;
     
+    % Decode varargin
     for i=1:2:length(varargin)
         if strcmpi(varargin{i}, 'type')
             switch lower(varargin{i + 1})
@@ -103,6 +125,14 @@ function EM(map, data, varargin)
             end;
         elseif strcmpi(varargin{i}, 'weights')
             weights = varargin{i + 1};
+        elseif strcmpi(varargin{i}, 'intervals')
+            intervals = varargin{i + 1};
+        elseif strcmpi(varargin{i}, 'Number_of_intervals')
+            nInt = varargin{i + 1};
+        elseif strcmpi(varargin{i}, 'intshrinkage')
+            delta = varargin{i + 1};
+        elseif strcmpi(varargin{i}, 'potential')
+            func = varargin{i + 1};
         else
             if ischar(varargin{i})
                 error(['Wrong name of argument "', varargin{i}, '"']);
@@ -112,17 +142,67 @@ function EM(map, data, varargin)
         end
     end
 
+    
     % Check type and length of weights
     if isempty(weights)
         weights = ones(n, 1);
-    elseif ~ismatrix(data) || ~isnumeric(data)
-        error('Incorrect type weights argument');
-    elseif size(weights, 1) ~= n || size(weights, 2) ~= 1
-        error('Incorrect size of weights argument');
+    else
+        %Weights must be a vector of nonnegative finite reals with at least two
+        %values greater than zero and with number of elements equal to number
+        %of rows in X. 
+        if ~isreal(weights) || ~isfinite(weights) || sum(weights<0)>0 ||...
+                sum(weights>0)<2 || size(weights, 1) ~= n ||...
+                size(weights, 2) ~= 1
+            error(['Incorrect value for argument "Weights". It must be ',...
+                'a column vector of nonnegative finite reals with at',...
+                'least two values greater than zero and with number',...
+                ' of elements equal to number of rows in data.']);
+        end
+        weights = weights(:);
     end
-    
-    % Define weights. Now it is trash but maybe...
+
+    % Define total weights
     TotalWeight = sum(weights);
+    weigh = weights;
+    pFunc = [];
+    
+    % Analyse PQSQ request
+    if ~isempty(func)
+        %Func must be function handler
+        if ~isa(func,'function_handle')
+            error(['Incorrect value in "potential" argument.'...
+                ' It must be function handler']);
+        end
+
+        if isempty(intervals)
+            %Function has to create intervals by automatic way
+            %nInt must be positive integer scalar
+            if ~isreal(nInt) || ~isfinite(nInt) || nInt < 1
+                error(['Incorrect value of "number_of_intervals" argument' ...
+                    'It must be positive integer scalar']);
+            else
+                nInt = floor(nInt);
+            end
+            %delta has to be positive real scalar
+            if ~isreal(delta) || ~isfinite(delta) || delta < 0
+                error(['Incorrect value of "intshrinkage" argument' ...
+                    'It must be positive real scalar']);
+            end
+            pFunc = definePotentialFunction(map.getDisp(), nInt, func, delta);
+        else
+            %intervals must contains non nerative values in ascending order.
+            %The first value must be zero.
+            if intervals(1)~=0 || ~all(isfinite(intervals)) ...
+                    || any((intervals(2:end)-intervals(1:end-1))<=0)
+                error(['Incorrect values in argument intervals: intervals must'...
+                    ' contains finite non negative values in ascending order.'...
+                    ' The first value must be zero.']);
+            end
+            pFunc.intervals = [intervals(:)', Inf(1)];
+            [pFunc.A, pFunc.B] = ...
+                computeABcoefficients(intervals, func);
+        end
+    end
     
     %Get initial state of nodes
     nodes = map.getMappedCoordinates();
@@ -147,16 +227,23 @@ function EM(map, data, varargin)
     % Start iterative process
     epoch = 1; % Number of iteration
     ass = zeros(n, 1); % Initial associations. It is impossible combination
+    qInd = zeros(n, 1);
     % Get initial modulo
     stretch = strFun(epoch);
     bend = bendFun(epoch);
     while true
-        % Save old associations.
+        % Save old associations and q indices.
         oldAss = ass;
+        oldQInd = qInd;
         % Find new associations
-        [~, ass] = associate(map, nodes, data);
+        [dist, ass] = associate(map, nodes, data);
+        % Find indeces for PQSQ if required
+        if ~isempty(pFunc)
+            [~, qInd] = histc(dist,pFunc.sqint);
+            weigh = weights .* pFunc.A(qInd)';
+        end
         % If nothing is changed then we have end of epoch
-        if all(oldAss == ass)
+        if all(oldAss == ass) && all(oldQInd == qInd)
             epoch = epoch + 1;
             tmp = strFun(epoch);
             tmp1 = bendFun(epoch);
@@ -175,23 +262,21 @@ function EM(map, data, varargin)
         % ass and create dummy element
         ass = ass + 1;
         % Calculate number of points for each node
-        tmp = accumarray(ass, weights, [N + 1, 1]);
+        tmp = accumarray(ass, weigh, [N + 1, 1]);
         % Normalise and remove dummy element
         NodeClusterRelativeSize = tmp(2:end) / TotalWeight;
-        % To prevent appearance of NaN
-        tmp(tmp == 0) = 1;
+        % Create centroids
         NodeClusterCenters = zeros(N + 1, dim);
         for k = 1:dim
             NodeClusterCenters(:, k) =...
-                accumarray(ass, data(:, k), [N + 1, 1]) ./ tmp;
+                accumarray(ass, data(:, k) .* weigh, [N + 1, 1]) / TotalWeight;
         end
         % Remove dummy element
         NodeClusterCenters = NodeClusterCenters(2:end,:);
         
         % form SLAE
         SLAUMatrix = diag(NodeClusterRelativeSize) + stretch * B + bend * C;
-        nodes = SLAUMatrix...
-            \bsxfun(@times, NodeClusterRelativeSize, NodeClusterCenters);
+        nodes = SLAUMatrix \ NodeClusterCenters;
     
         % Restore ass
         ass = ass - 1;
@@ -209,4 +294,58 @@ function EM(map, data, varargin)
     end
 end
 
+function potentialFunction = definePotentialFunction( x,...
+    number_of_intervals, potential_function_handle, delta )
+%definePotentialFunction defines "uniform in square" intervals for trimming
+%threshold x and specified number_of_intervals.
+%   x is upper boundary of the interval last but one.
+%   number_of_intervals is required number of intervals.
+%   potential_function_handle is function handler for coefficients
+%       calculation.
+%   delta is coefficient of shrinkage which is greater than 0 ang not
+%       greater than 1.
+%Output argument potentialFunction is structure with three fields:
+%   intervals is matrix m-by-number_of_intervals. Each row contains
+%       number_of_intervals values of thresholds for intervals and one
+%       additional value Inf
+%   A and B are the m-by-number_of_intervals matrices with quadratic
+%       functions coefficients
 
+    if nargin < 4 
+        delta = 1;
+    end
+    
+    p = number_of_intervals - 1;
+    
+    %intervals is the product of row and maximal coefficient multiplied by delta:
+    intervals = (x * delta) * ((0:p) / p) .^ 2;
+    
+    potentialFunction.intervals = [intervals, Inf(1)];
+    potentialFunction.sqint = potentialFunction.intervals .^ 2;
+    [potentialFunction.A,potentialFunction.B] = ...
+        computeABcoefficients(intervals, potential_function_handle);
+end
+
+function [A,B] = computeABcoefficients(intervals, potential_function_handle)
+%PQSQR_computeABcoefficients calculates the coefficients a and b for
+%quadratic fragments of potential function.
+%   intervals is the 1-by-K matrix of intervals' boudaries without final
+%       infinit boundary.
+%   potential_function_handle is a handle of majorant function.
+
+    %Get dimensions of intervals
+    p = size(intervals,2);
+
+    %Preallocate memory
+    A = zeros(1,p);
+    B = zeros(1,p);
+
+    %Calculate value of function all boundaries
+    pxk = potential_function_handle(intervals);
+    sxk = intervals.^2;
+
+    A(1:p-1) = (pxk(1:p-1)-pxk(2:p))./(sxk(1:p-1)-sxk(2:p));
+    B(1:p-1) = (pxk(2:p).*sxk(1:p-1)-pxk(1:p-1).*sxk(2:p))./...
+        (sxk(1:p-1)-sxk(2:p));
+    B(p) = pxk(p);
+end
