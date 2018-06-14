@@ -95,10 +95,11 @@ classdef MapGeometry  < handle
             elseif strcmp('pci',type)
                 %Principal component initialization
                 %Calculate requared number of PCs:
-                [V, D] = eigs(cov(data,1),map.dimension);
+                [~, D, V] = svds(data, map.dimension);
                 D = diag(D);
                 [~, ind] = sort(D,'descend');
                 V = V(:,ind);
+                
                 %Normalize PCs' direction
                 for k=1:map.dimension
                     if V(k,k)<0
