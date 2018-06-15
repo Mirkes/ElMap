@@ -1,4 +1,4 @@
-what = 12;
+what = 11;
 
 % What is parameter to select test
 % 0 - generate data for test
@@ -47,7 +47,12 @@ switch what
 %         EM(map, data, 'stretch', 0.01, 'bend', 0.1, 'potential', @L2,...
 %             'Number_of_intervals', 2, 'intshrinkage', 0.5);
         drawMap(map, data);
-        drawMapInt(map, data);
+        
+        classes = ones(500, 1);
+        classes(1:5:500) = classes(1:5:500) + 1;
+        
+        
+        drawMapInt(map, data, 0, 'classes', classes, 'markColour', ['b'; 'g']);
     case 12
         map = rect2DMap(10, 10);
         init(map, data, 'pci');
@@ -63,7 +68,7 @@ switch what
         EM(map, data, 'stretch', 0.01, 'bend', 0.1, 'potential', @L2,...
             'Number_of_intervals', 2, 'intshrinkage', 0.7);
         if exist('classes', 'var') == 1
-            drawMap(map, data, classes, ['b','g']);
+            drawMap(map, data, 'classes', classes, 'markColour', ['b','g']);
         else
             drawMap(map, data);
         end
