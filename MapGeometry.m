@@ -12,11 +12,15 @@ classdef MapGeometry  < handle
         ribs        % list of map's ribs. Each rib contains numbers of three
                     % nodes which form this rib.
         disp        % dispersion measure for PQSQ approach
+        preproc     % true if data were preprocessed
+        PCs         % empty if preproc is false and set of PCs otherwise.
     end
     
     methods
         function map = MapGeometry( dim )
             map.dimension = dim;
+            map.preproc = false;
+            map.PCs = [];
         end
         
         function dim = getDimension(map)
@@ -50,12 +54,12 @@ classdef MapGeometry  < handle
         
         function disp = getDisp(map)
             %method to access disp of map
-            %disp is non-negative number which prsrnt the maximal distance
-            %from data point to nearest original node.
+            %disp is non-negative number which presents the maximal
+            %distance from data point to nearest original node.
             disp = map.disp;
         end
         
-        function init(map, data, type)
+        function init(map, data, type, reduce)
         %init is the method of map initialization. This method defines an 
         %initial mapped coordinates. In accordance of results of paper
         %[Akinduko, Ayodeji A., Evgeny M. Mirkes, and Alexander N. Gorban.
@@ -63,19 +67,34 @@ classdef MapGeometry  < handle
         %Information Sciences(2015),
         %http://dx.doi.org/10.1016/j.ins.2015.10.013] three methods have to
         %be implemented by each map: random initialization, random
-        %selection and principal component initialization. Input argument
-        %of this method is set of data points.
-        %data is n-by-m matrix with n data points and m coordinates for
-        %   each point (each row is one data point)
-        %type is the type of initialization: 'random', 'randomSelection' or
-        %   'pci'. Default value 'pci'.
-            if nargin<2
+        %selection and principal component initialization.
+        %
+        %Inputs:
+        %   map is MapGeometry object to initialise map.
+        %   data is n-by-m matrix with n data points and m coordinates for
+        %       each point (each row is one data point)
+        %   type is the type of initialization: 'random', 'randomSelection'
+        %       or 'pci'. Default value 'pci'.
+        %   reduce is nonnegative integer. If 'reduce' is positive and is
+        %       less than n then specifien number of the first principal
+        %       components is used. If 'reduce' is zero and m>n then the
+        %       first n-1 principal components is used. If 'reduce' is
+        %       positive and is greater or equal to n or 'reduce' is zero
+        %       and n>m then dimensionality reduction nis not performed.
+        %       
+            if nargin < 2
                 error('Input argument "data" MUST be specified');
             end
-            if nargin<3
+            if nargin < 3
                 type = 'pci';
             end
-            if strcmpi('random',type)
+            if nargin < 4
+                reduce = 0;
+            end
+            
+            data = map.preprocessDataInit(data, reduce);
+            
+            if strcmpi('random', type)
                 %Random generation
                 %Calculate intervals for each coordinates
                 mini = min(data);
@@ -127,6 +146,55 @@ classdef MapGeometry  < handle
             end
             tmp = associate(map, map.mapped, data);
             map.disp = sqrt(max(tmp));
+        end
+        
+        function data = preprocessDataInit(map, data, reduce)
+        %Perform data preprocessing if necessary (see description of
+        %'reduce')
+        %
+        %Inputs:
+        %   map is MapGeometry object to initialise map.
+        %   data is n-by-m matrix with n data points and m coordinates for
+        %       each point (each row is one data point)
+        %   reduce is nonnegative integer. If 'reduce' is positive and is
+        %       less than n then specifien number of the first principal
+        %       components is used. If 'reduce' is zero and m>n then the
+        %       first n-1 principal components is used. If 'reduce' is
+        %       positive and is greater or equal to n or 'reduce' is zero
+        %       and n>m then dimensionality reduction nis not performed.
+        %
+            % Get sizes
+            [n, m] = size(data);
+            reduce = floor(reduce);
+            if reduce >= m || n > m
+                return;
+            end
+            % Define required number of coordinates
+            k = n - 1;
+            if reduce > 0 && reduce > k
+                k = reduce;
+            end
+            
+            % Search required number of PCs
+            [~, D, V] = svds(data, k);
+            D = diag(D);
+            [~, ind] = sort(D,'descend');
+            V = V(:,ind);
+            % Standardise direction of PCs
+            ind = diag(V) < 0;
+            V(:, ind) = -V(:, ind);
+            % Store results
+            map.preproc = true;
+            map.PCs = V;
+            % Preprocess data
+            data = map.preprocessData(data);
+        end
+        
+        function data = preprocessData(map, data)
+            if isempty(map.PCs)
+                return;
+            end
+            data = data * map.PCs;
         end
         
         function coord = project(map, points, type, kind)

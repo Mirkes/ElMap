@@ -71,6 +71,9 @@ function EM(map, data, varargin)
         error('Incorrect type of the "data" argument, data must be a matrix');
     end
     
+    % Data preprocessing
+    data = map.preprocessData(data);
+    
     % Get sizes of data
     [n, dim] = size(data);
 

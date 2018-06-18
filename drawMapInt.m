@@ -24,6 +24,9 @@ function drawMapInt( map, data, projType, varargin )
         projType = 0;
     end
     
+    % Data preprocessing
+    data = map.preprocessData(data);
+
     % Parse optional parameters
     classes = [];
     markColour = [];

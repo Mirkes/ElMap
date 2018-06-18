@@ -38,6 +38,9 @@ function drawMap(map, data, varargin)
 %       'lineWidth' is non-negative number for map line width. Default
 %           value is 2.
 
+    % Data preprocessing
+    data = map.preprocessData(data);
+
     %Get data dimension
     [N, dim] = size(data);
 
@@ -104,8 +107,14 @@ function drawMap(map, data, varargin)
     links = map.getLinks;
     if dim>3 % Dimension is greater than 3 and we need to use PCs
         % Calculate three first PCs and project data onto PCs
-        [~, ~, V] = svds(data, 3);
-        data = data * V;
+        if isempty(map.PCs)
+            [~, D, V] = svds(data, 3);
+            D = diag(D);
+            [~, ind] = sort(D,'descend');
+            V = V(:,ind);
+            data = data * V;
+            maps = maps * V;
+        end
         %Draw data
         for k = 1:nCls
             ind = classes == cls(k);
@@ -117,7 +126,6 @@ function drawMap(map, data, varargin)
         end
         %Draw edges
         %Prepare arrays
-        maps = maps * V;
         X=[maps(links(:,1), 1)';maps(links(:,2), 1)'];
         Y=[maps(links(:,1), 2)';maps(links(:,2), 2)'];
         Z=[maps(links(:,1), 3)';maps(links(:,2), 3)'];
