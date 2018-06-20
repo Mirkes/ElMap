@@ -4,6 +4,7 @@ classdef MapGeometry  < handle
     %   MapGeometry contains description of underlied map.
     
     properties (SetAccess = protected)
+        sizes       % size of map is map dependent
         dimension   % map dimension
         internal    % internal coordinates of nodes
         mapped      % mapped coordinates of nodes
@@ -13,6 +14,7 @@ classdef MapGeometry  < handle
                     % nodes which form this rib.
         disp        % dispersion measure for PQSQ approach
         preproc     % true if data were preprocessed
+        means       % empty if preproc is false and mean of data otherwise.
         PCs         % empty if preproc is false and set of PCs otherwise.
     end
     
@@ -100,52 +102,63 @@ classdef MapGeometry  < handle
                 mini = min(data);
                 maxi = max(data)-mini;
                 %Generate random coordinates
-                tmp = rand(size(map.internal,1),size(data,2));
+                data = rand(size(map.internal,1),size(data,2));
                 %Scale coordinates
-                tmp = bsxfun(@times,tmp,maxi);
+                data = bsxfun(@times,data,maxi);
                 %shift coordinates
-                map.mapped = bsxfun(@plus,tmp,mini);
+                map.mapped = bsxfun(@plus,data,mini);
             elseif strcmpi('randomSelection',type)
                 %Random selection
                 %Generate vector of prototypes numbers
-                tmp = randi(size(data,1),size(map.internal,1),1);
+                data = randi(size(data,1),size(map.internal,1),1);
                 %Get selected points and put as mapped coordinates
-                map.mapped = data(tmp,:);
+                map.mapped = data(data,:);
             elseif strcmp('pci',type)
-                %Principal component initialization
-                %Calculate requared number of PCs:
-                [~, D, V] = svds(data, map.dimension);
-                D = diag(D);
-                [~, ind] = sort(D,'descend');
-                V = V(:,ind);
-                
-                %Normalize PCs' direction
-                for k=1:map.dimension
-                    if V(k,k)<0
-                        V(:,k)=-V(:,k);
+                % Principal component initialization
+                % Centralise data
+                meanDat = mean(data);
+                % Calculate mean and PCs
+                if isempty(map.PCs)
+                    %Calculate requared number of PCs:
+                    data = bsxfun(@minus, data, meanDat);
+                    [~, D, V] = svds(data, map.dimension);
+                    D = diag(D);
+                    [~, ind] = sort(D,'descend');
+                    V = V(:,ind);
+
+                    %Normalize PCs' direction
+                    for k=1:map.dimension
+                        if V(k,k)<0
+                            V(:,k)=-V(:,k);
+                        end
                     end
+                    tmp = data * V;
+                else
+                    % Data were preprocessed
+                    V = eye(size(data, 2), map.dimension);
+                    tmp = data(:, 1:map.dimension);
                 end
+                
                 %Calculate mean and dispersion along each PCs
-                tmp = data*V;
                 mini = min(tmp);
                 maxi = max(tmp);
-                means = sum(tmp)/size(data,1);
-                disper = min([means-mini;maxi-means]);
-                means = sum(data)/size(data,1);
+                meant = mean(tmp);
+                disper = min([meant - mini; maxi - meant]);
                 %Calculate mean and dispersion along internal coordinates
                 minI = min(map.internal);
                 maxI = max(map.internal);
-                meanS = sum(map.internal)/size(map.internal,1);
-                disP = min([meanS-minI;maxI-meanS]);
+                meanI = sum(map.internal) / size(map.internal,1);
+                disP = min([meanI - minI; maxI - meanI]);
                 %auxiliary calculations
-                V = bsxfun(@times,V,disper./disP);
+                V = bsxfun(@times, V, disper ./ disP);
                 %final values
-                map.mapped=bsxfun(@plus,bsxfun(@minus, map.internal, meanS)*V',means);
+                map.mapped=bsxfun(@plus,...
+                    bsxfun(@minus, map.internal, meanI) * V', meanDat);
             else
                 error(['type "' type '" is not recognized as valid type of initialization']);
             end
-            tmp = associate(map, map.mapped, data);
-            map.disp = sqrt(max(tmp));
+            data = associate(map, map.mapped, data);
+            map.disp = sqrt(max(data));
         end
         
         function data = preprocessDataInit(map, data, reduce)
@@ -166,7 +179,7 @@ classdef MapGeometry  < handle
             % Get sizes
             [n, m] = size(data);
             reduce = floor(reduce);
-            if reduce >= m || n > m
+            if reduce >= m || (reduce == 0 && n > m)
                 return;
             end
             % Define required number of coordinates
@@ -176,7 +189,8 @@ classdef MapGeometry  < handle
             end
             
             % Search required number of PCs
-            [~, D, V] = svds(data, k);
+            map.means = mean(data);
+            [~, D, V] = svds(bsxfun(@minus, data, map.means), k);
             D = diag(D);
             [~, ind] = sort(D,'descend');
             V = V(:,ind);
@@ -194,7 +208,7 @@ classdef MapGeometry  < handle
             if isempty(map.PCs)
                 return;
             end
-            data = data * map.PCs;
+            data = bsxfun(@minus, data, map.means) * map.PCs;
         end
         
         function coord = project(map, points, type, kind)
@@ -381,6 +395,49 @@ classdef MapGeometry  < handle
             [dist, klas] = min(dist,[],2);
         end
         
+        function newMap = extend(map, val, data)
+        %extend create extended version of map to reduce/prevent border
+        %effect.
+        %
+        %Inputs:
+        %   map is MapGeometry object to extend
+        %   val is optional parameter to customise process:
+        %       is greater of equal 1 is used to add val ribbons to each
+        %           side of map.
+        %       is positive number between 0 and 1 means maximal acceptable
+        %           fraction of points which are projected onto map border.
+        %       default value is 1
+        %   data is n-by-m data points to test, where n is number of
+        %       points and m is dimension of data space.
+        
+            % Check the val value
+            if nargin < 2
+                val = 1;
+            elseif val < 0
+                error(['Value of val atrribute must be positive value',...
+                    ' between 0 and 1 for fraction restriction or',...
+                    ' positive integer to add val ribbons to each',...
+                    ' side of map']);
+            end
+            if val < 1
+                % Restriction for fraction of border cases
+                if nargin < 3
+                    error('To use 0<val<1 data argument must be specified');
+                end
+                dat = map.preprocessData(data);
+                newMap = map;
+                while newMap.borderCases(dat, newMap.getBorder()) > val
+                    newMap = newMap.extendPrim();
+                end
+            else
+                val = floor(val);
+                newMap = map.extendPrim();
+                for k = 2:val
+                    newMap = newMap.extendPrim();
+                end
+            end 
+        end
+        
         function fvu = FVU(map, data, node, type)
         %Calculate fraction of variance unexplained for specified data and
         %nodes.
@@ -402,8 +459,8 @@ classdef MapGeometry  < handle
             
             %Calculate base variance
             N = size(data,1);
-            means = sum(data)/N;
-            base = sum(data(:).^2)-N*sum(means.^2);
+            meanS = sum(data)/N;
+            base = sum(data(:).^2)-N*sum(meanS.^2);
             
             %Get distances to map
             [~, dist] = map.projectPrime(node, data, type, 'mapped');
@@ -422,15 +479,39 @@ classdef MapGeometry  < handle
             end
             map.mapped = newMapped;
         end
+        
+        function frac = borderCases(map, data, list)
+        %borderCases calculates fraction of border cases among all data
+        %points.
+        %
+        %Inputs:
+        %   map is MapGeometry object to use
+        %   data is n-by-m data points to test, where n is number of
+        %       points and m is dimension of data space.
+        %   list is list of indices of border nodes.
+        
+            [~, ass] = map.associate(map.getMappedCoordinates, data);
+            % Calculate number of points for each node
+            N = size(map.getMappedCoordinates, 1);
+            tmp = accumarray(ass + 1, 1, [N + 1, 1]);
+            % Normalise and remove dummy element
+            tmp = tmp(2:end);
+            frac = sum(tmp(list)) / size(data, 1)
+        end
     end
         
     
-%     methods (Abstract)
+    methods (Abstract)
 %         %Distance is method to calculate distances between two nodes in the
 %         %internal coordinates. This method is useful for SOM fitting
 %         %procedure.
 %         dist = distance(map,nodes)
-%     end
+        % Primitive extension of map - addition of one ribbon of nodes to
+        % map in each direction
+        newMap = extendPrim(map)
+        % Form list of border nodes
+        borders = getBorder(map)
+    end
     
 end
 

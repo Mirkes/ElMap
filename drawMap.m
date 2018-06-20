@@ -108,12 +108,14 @@ function drawMap(map, data, varargin)
     if dim>3 % Dimension is greater than 3 and we need to use PCs
         % Calculate three first PCs and project data onto PCs
         if isempty(map.PCs)
-            [~, D, V] = svds(data, 3);
+            means = mean(data);
+            dat = bsxfun(@minus, data, means);
+            [~, D, V] = svds(dat, 3);
             D = diag(D);
             [~, ind] = sort(D,'descend');
             V = V(:,ind);
-            data = data * V;
-            maps = maps * V;
+            data = dat * V;
+            maps = bsxfun(@minus, maps, means) * V;
         end
         %Draw data
         for k = 1:nCls

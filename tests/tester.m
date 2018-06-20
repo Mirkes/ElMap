@@ -1,4 +1,4 @@
-what = 11;
+what = 19;
 
 % What is parameter to select test
 % 0 - generate data for test
@@ -11,6 +11,12 @@ what = 11;
 % 11 - test oneDMap
 % 12 - test rect2DMap
 % 13 - test tri2DMap
+% 14 - test of oneDMap extension by one
+% 15 - test of oneDMap extension by border fraction
+% 16 - test of rect2DMap extension by one
+% 17 - test of rect2DMap extension by border fraction
+% 18 - test of tri2DMap extension by one
+% 19 - test of tri2DMap extension by border fraction
 
 switch what
     case 0
@@ -42,7 +48,7 @@ switch what
 %         drawMap(map, data);
 %         drawMapInt(map, data);
 %         EM(map, data, 'stretch', 0.01, 'bend', 0.1 );
-        EM(map, data, 'stretch', 0.001, 'bend', 0.1, 'potential', @L1,... @LLog,...
+        EM(map, data, 'stretch', 0.01, 'bend', 0.1, 'potential', @LLog,...
             'Number_of_intervals', 5);
 %         EM(map, data, 'stretch', 0.01, 'bend', 0.1, 'potential', @L2,...
 %             'Number_of_intervals', 2, 'intshrinkage', 0.5);
@@ -50,9 +56,9 @@ switch what
         
         classes = ones(500, 1);
         classes(1:5:500) = classes(1:5:500) + 1;
-        
-        
-        drawMapInt(map, data, 0, 'classes', classes, 'markColour', ['b'; 'g']);
+
+        drawMapInt(map, data);
+%         drawMapInt(map, data, 0, 'classes', classes, 'markColour', ['b'; 'g']);
     case 12
         map = rect2DMap(10, 10);
         init(map, data, 'pci');
@@ -63,16 +69,17 @@ switch what
         end
         drawMapInt(map, data);
 %         EM(map, data, 'stretch', 0.01, 'bend', 0.1);
-%         EM(map, data, 'stretch', 0.0001, 'bend', 0.1, 'potential', @LLog,...
-%             'Number_of_intervals', 5);
-        EM(map, data, 'stretch', 0.01, 'bend', 0.1, 'potential', @L2,...
-            'Number_of_intervals', 2, 'intshrinkage', 0.7);
+        EM(map, data, 'stretch', 0.001, 'bend', 0.1, 'potential', @LLog,...
+            'Number_of_intervals', 5);
+%         EM(map, data, 'stretch', 0.01, 'bend', 0.1, 'potential', @L2,...
+%             'Number_of_intervals', 2, 'intshrinkage', 0.7);
         if exist('classes', 'var') == 1
             drawMap(map, data, 'classes', classes, 'markColour', ['b','g']);
         else
             drawMap(map, data);
         end
         drawMapInt(map, data);
+        drawMapInt(map, data, 1);
     case 13
         map = tri2DMap(4, 4);
         init(map, data, 'pci');
@@ -81,4 +88,76 @@ switch what
         EM(map, data, 'stretch', 0.001, 'bend', 0.01);
         drawMap(map, data);
         drawMapInt(map, data);
+    case 14
+        map = OneDMap(10);
+        init(map, data, 'pci');
+        EM(map, data, 'stretch', 0.01, 'bend', 0.1, 'potential', @LLog,...
+            'Number_of_intervals', 5);
+        drawMap(map, data);
+        drawMapInt(map, data);
+        for k = 1:5
+            map = map.extend(1);
+            drawMap(map, data);
+            drawMapInt(map, data);
+        end
+    case 15
+        map = OneDMap(10);
+        init(map, data, 'pci');
+        EM(map, data, 'stretch', 0.01, 'bend', 0.1, 'potential', @LLog,...
+            'Number_of_intervals', 5);
+        drawMap(map, data);
+        drawMapInt(map, data);
+        map = map.extend(0.05, data);
+        drawMap(map, data);
+        drawMapInt(map, data);
+    case 16
+        map = rect2DMap(10, 10);
+        init(map, data, 'pci');
+        EM(map, data, 'stretch', 0.001, 'bend', 0.1, 'potential', @LLog,...
+            'Number_of_intervals', 5);
+        drawMap(map, data);
+        drawMapInt(map, data);
+        drawMapInt(map, data, 1);
+        for k = 1:5
+            map = map.extend(1);
+            drawMap(map, data);
+            drawMapInt(map, data);
+            drawMapInt(map, data, 1);
+        end
+    case 17
+        map = rect2DMap(10, 10);
+        init(map, data, 'pci');
+        EM(map, data, 'stretch', 0.001, 'bend', 0.1, 'potential', @LLog,...
+            'Number_of_intervals', 5);
+        drawMap(map, data);
+        drawMapInt(map, data);
+        map = map.extend(0.05, data);
+        drawMap(map, data);
+        drawMapInt(map, data);
+        drawMapInt(map, data, 1);
+    case 18
+        map = tri2DMap(10, 10);
+        init(map, data, 'pci');
+        EM(map, data, 'stretch', 0.001, 'bend', 0.1, 'potential', @LLog,...
+            'Number_of_intervals', 5);
+        drawMap(map, data);
+        drawMapInt(map, data);
+        drawMapInt(map, data, 1);
+        for k = 1:5
+            map = map.extend(1);
+            drawMap(map, data);
+            drawMapInt(map, data);
+            drawMapInt(map, data, 1);
+        end
+    case 19
+        map = tri2DMap(10, 10);
+        init(map, data, 'pci');
+        EM(map, data, 'stretch', 0.001, 'bend', 0.1, 'potential', @LLog,...
+            'Number_of_intervals', 5);
+        drawMap(map, data);
+        drawMapInt(map, data);
+        map = map.extend(0.05, data);
+        drawMap(map, data);
+        drawMapInt(map, data);
+        drawMapInt(map, data, 1);
 end

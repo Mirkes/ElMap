@@ -12,6 +12,8 @@ classdef tri2DMap < MapGeometry
         function map = tri2DMap(rows, cols)
             %Create map
             map@MapGeometry(2);
+            % Store size
+            map.sizes = [rows, cols];
             %Calculate internal coordinates of nodes
             vstep = sqrt(3)/2;
             %Calculate number of odd and even rows
@@ -89,7 +91,81 @@ classdef tri2DMap < MapGeometry
             %nodes which form one face.
             face=map.faces;
         end
-    end
     
+        function newMap = extendPrim(map)
+            % Get size of existing map
+            row = map.sizes(1);
+            col = map.sizes(2);
+            rowN = row + 2;
+            colN = col + 1;
+            % Calculate specific geometric information for old and new maps
+            odd = round(row / 2 + 0.001);
+            even = row - odd;
+            nm = odd * col + even * (col - 1);
+            % The same for new map
+            oddN = round(rowN / 2 + 0.001);
+            evenN = rowN - oddN;
+            NM = oddN * colN + evenN * (colN - 1);
+            % Create new map with greater size
+            newMap = tri2DMap(rowN, colN);
+            % Creater array for mapped nodes
+            newMap.mapped = zeros(size(newMap.internal, 1), size(map.mapped, 2));
+            % Form list of old nodes
+            ind = 1:NM;
+            ind(newMap.getBorder) = [];
+            % Copy known positions of nodes into new map
+            newMap.mapped(ind, :) = map.mapped;
+            
+            % Expansion down left
+            ind = 1:colN - 2;
+            newMap.mapped(ind, :) = 2 * newMap.mapped(ind + colN, :)...
+                - newMap.mapped(ind + 2 * colN, :);
+            % Expansion down right
+            ind = 3:colN;
+            newMap.mapped(ind, :) = 2 * newMap.mapped(ind + colN - 1, :)...
+                - newMap.mapped(ind + 2 * colN - 2, :);
+            
+            % Expansion up left
+            if oddN > evenN
+                ind = NM - colN + 1:NM - 2;
+            else
+                ind = NM - colN + 2:NM - 1;
+            end
+            newMap.mapped(ind, :) = 2 * newMap.mapped(ind - colN + 1, :)...
+                - newMap.mapped(ind - 2 * colN + 2, :);
+            % Expansion up right
+            ind = NM - colN + 3:NM;
+            newMap.mapped(ind, :) = 2 * newMap.mapped(ind - colN, :)...
+                - newMap.mapped(ind - 2 * colN, :);
+            
+            % Expansion left
+            od = oddN - 1 + evenN - oddN;
+            ind = (1:od) * (2 * colN - 1) + 1;
+            newMap.mapped(ind, :) = 2 * newMap.mapped(ind + 1, :)...
+                - newMap.mapped(ind + 2, :);
+            % Expansion right
+            ind = (1:od) * (2 * colN - 1) + col + 1;
+            newMap.mapped(ind, :) = 2 * newMap.mapped(ind - 1, :)...
+                - newMap.mapped(ind - 2, :);
+        end
+        
+        function res = getBorder(map)
+            % Get map sizes
+            row = map.sizes(1);
+            col = map.sizes(2);
+            
+            % Calculate specific geometric information for old and new maps
+            odd = round(row / 2 + 0.001);
+            even = row - odd;
+            N = odd * col + even * (col - 1);
+            
+            % Form list of border nodes
+            od = odd - 1 + even - odd;
+            res = [1:col,...                    % Bottom row
+                N - col + 2 + even - odd:N,...  % Top row
+                (1:od) * (2 * col - 1) + 1,...  % Left column
+                (1:od) * (2 * col - 1) + col];    % Right column
+        end
+    end
 end
 

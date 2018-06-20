@@ -1,7 +1,7 @@
 % test of “Five types of breast cancer” database
 
 % What is sum of the following masks
-what = 64;
+what = 12;
 
 % 1 - Initialise map
 % 2 - Draw original distribution
@@ -60,17 +60,17 @@ end
 
 if bitand(what, 16) ~= 0
     % Draw fitted map in internal coordinates, nodes
-    for k=1:2
-        if k == 1
-            map = map1;
-        else
-            map = map2;
-        end
+%     for k=1:2
+%         if k == 1
+%             map = map1;
+%         else
+%             map = map2;
+%         end
         tic;
         drawMapInt(map, d1n, 0, 'lineWidth', 0.5, 'nodeMarker', 'h',...
              'classes', col, 'markColour', colours);
         toc
-    end
+%     end
 end
 
 if bitand(what, 32) ~= 0
