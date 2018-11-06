@@ -496,7 +496,7 @@ classdef MapGeometry  < handle
             tmp = accumarray(ass + 1, 1, [N + 1, 1]);
             % Normalise and remove dummy element
             tmp = tmp(2:end);
-            frac = sum(tmp(list)) / size(data, 1)
+            frac = sum(tmp(list)) / size(data, 1);
         end
     end
         

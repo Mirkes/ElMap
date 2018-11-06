@@ -35,8 +35,9 @@ function drawMap(map, data, varargin)
 %           Default value is 6;
 %       'nodeColour' is one of the possible Matlab colours ('r', 'g', 'b',
 %           'y', 'm', 'c', 'w', 'k'). Default value is 'r';
-%       'lineWidth' is non-negative number for map line width. Default
-%           value is 2.
+%       'lineWidth' is non-negative number for map line width. Zero means
+%           absense of map at all (widht of line is zero and 'nodeMarker'
+%           is 'none'. Default value is 2. 
 
     % Data preprocessing
     data = map.preprocessData(data);
@@ -99,13 +100,19 @@ function drawMap(map, data, varargin)
         markSize = repmat(6, nCls, 1);
     end
     
+    if lineWidth == 0
+        mapDraw = 0;
+    else
+        mapDraw = 1;
+    end
+    
     %Create figure
     figure;
     %Get map coordinates
     maps = map.getMappedCoordinates;
     %get map links
     links = map.getLinks;
-    if dim>3 % Dimension is greater than 3 and we need to use PCs
+    if dim > 3 % Dimension is greater than 3 and we need to use PCs
         % Calculate three first PCs and project data onto PCs
         if isempty(map.PCs)
             means = mean(data);
@@ -126,19 +133,21 @@ function drawMap(map, data, varargin)
                 'MarkerSize', markSize(k));
             hold on
         end
-        %Draw edges
-        %Prepare arrays
-        X=[maps(links(:,1), 1)';maps(links(:,2), 1)'];
-        Y=[maps(links(:,1), 2)';maps(links(:,2), 2)'];
-        Z=[maps(links(:,1), 3)';maps(links(:,2), 3)'];
-        %Draw edges
-        plot3(X, Y, Z, nodeColour, 'LineWidth', lineWidth);
-        %Draw map nodes
-        plot3(maps(:, 1), maps(:, 2), maps(:, 3), 'Marker', nodeMarker,...
-            'MarkerFaceColor', nodeColour, 'MarkerEdgeColor', nodeColour,...
-            'MarkerSize', nodeMarkerSize, 'LineStyle', 'none');
+        if mapDraw
+            %Draw edges
+            %Prepare arrays
+            X=[maps(links(:,1), 1)';maps(links(:,2), 1)'];
+            Y=[maps(links(:,1), 2)';maps(links(:,2), 2)'];
+            Z=[maps(links(:,1), 3)';maps(links(:,2), 3)'];
+            %Draw edges
+            plot3(X, Y, Z, nodeColour, 'LineWidth', lineWidth);
+            %Draw map nodes
+            plot3(maps(:, 1), maps(:, 2), maps(:, 3), 'Marker', nodeMarker,...
+                'MarkerFaceColor', nodeColour, 'MarkerEdgeColor', nodeColour,...
+                'MarkerSize', nodeMarkerSize, 'LineStyle', 'none');
+        end
         axis equal;
-    elseif dim==3
+    elseif dim == 3
         %3d data
         %Draw data
         for k = 1:nCls
@@ -149,19 +158,21 @@ function drawMap(map, data, varargin)
                 'MarkerSize', markSize(k));
             hold on
         end
-        %Draw edges
-        %Prepare arrays
-        X=[maps(links(:,1), 1)';maps(links(:,2), 1)'];
-        Y=[maps(links(:,1), 2)';maps(links(:,2), 2)'];
-        Z=[maps(links(:,1), 3)';maps(links(:,2), 3)'];
-        %Draw edges
-        plot3(X, Y, Z, nodeColour, 'LineWidth', lineWidth);
-        %Draw map nodes
-        plot3(maps(:, 1), maps(:, 2), maps(:, 3), 'Marker', nodeMarker,...
-            'MarkerFaceColor', nodeColour, 'MarkerEdgeColor', nodeColour,...
-            'MarkerSize', nodeMarkerSize, 'LineStyle', 'none');
+        if mapDraw
+            %Draw edges
+            %Prepare arrays
+            X=[maps(links(:,1), 1)';maps(links(:,2), 1)'];
+            Y=[maps(links(:,1), 2)';maps(links(:,2), 2)'];
+            Z=[maps(links(:,1), 3)';maps(links(:,2), 3)'];
+            %Draw edges
+            plot3(X, Y, Z, nodeColour, 'LineWidth', lineWidth);
+            %Draw map nodes
+            plot3(maps(:, 1), maps(:, 2), maps(:, 3), 'Marker', nodeMarker,...
+                'MarkerFaceColor', nodeColour, 'MarkerEdgeColor', nodeColour,...
+                'MarkerSize', nodeMarkerSize, 'LineStyle', 'none');
+        end
         axis equal;
-    elseif dim==2
+    elseif dim == 2
         %two dimensional data
         %Draw data
         for k = 1:nCls
@@ -172,16 +183,18 @@ function drawMap(map, data, varargin)
                 'MarkerSize', markSize(k));
             hold on
         end
-        %Draw edges
-        %Prepare arrays
-        X=[maps(links(:,1),1)';maps(links(:,2),1)'];
-        Y=[maps(links(:,1),2)';maps(links(:,2),2)'];
-        %Draw edges
-        plot(X, Y, nodeColour, 'LineWidth', lineWidth);
-        %Draw map nodes
-        plot(maps(:,1),maps(:,2), 'Marker', nodeMarker,...
-            'MarkerFaceColor', nodeColour, 'MarkerEdgeColor', nodeColour,...
-            'MarkerSize', nodeMarkerSize, 'LineStyle', 'none');
+        if mapDraw
+            %Draw edges
+            %Prepare arrays
+            X=[maps(links(:,1),1)';maps(links(:,2),1)'];
+            Y=[maps(links(:,1),2)';maps(links(:,2),2)'];
+            %Draw edges
+            plot(X, Y, nodeColour, 'LineWidth', lineWidth);
+            %Draw map nodes
+            plot(maps(:,1),maps(:,2), 'Marker', nodeMarker,...
+                'MarkerFaceColor', nodeColour, 'MarkerEdgeColor', nodeColour,...
+                'MarkerSize', nodeMarkerSize, 'LineStyle', 'none');
+        end
         axis equal;
     else
         %one dimensional data
@@ -194,16 +207,19 @@ function drawMap(map, data, varargin)
                 'MarkerSize', markSize(k));
             hold on
         end
-        %Draw edges
-        %Prepare arrays
-        X=[maps(links(:,1),1)'; maps(links(:,2),1)'];
-        Y=zeros(2,size(links,1));
-        %Draw edges
-        plot(X, Y, nodeColour, 'LineWidth', lineWidth);
-        %Draw map nodes
-        plot(maps(:,1),0, 'Marker', nodeMarker,...
-            'MarkerFaceColor', nodeColour, 'MarkerEdgeColor', nodeColour,...
-            'MarkerSize', nodeMarkerSize, 'LineStyle', 'none');
+        if mapDraw
+            
+            %Draw edges
+            %Prepare arrays
+            X=[maps(links(:,1),1)'; maps(links(:,2),1)'];
+            Y=zeros(2,size(links,1));
+            %Draw edges
+            plot(X, Y, nodeColour, 'LineWidth', lineWidth);
+            %Draw map nodes
+            plot(maps(:,1),0, 'Marker', nodeMarker,...
+                'MarkerFaceColor', nodeColour, 'MarkerEdgeColor', nodeColour,...
+                'MarkerSize', nodeMarkerSize, 'LineStyle', 'none');
+        end
     end
 end
 
