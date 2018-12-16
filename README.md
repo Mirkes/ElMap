@@ -1,6 +1,8 @@
 # ElMap
 
-It is Matlab implementation of well known Elastic map methodology for data visualisation. 
+It is Matlab implementation of well known Elastic map methodology for data visualisation with addition several new approaches like PQSQ data approximation. 
+
+Detailed description of this function can be found in the file <b>Elastic maps.docx</b> in the folder <b>doc</b>
 
 ## Acknowledgements
 
