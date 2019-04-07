@@ -37,7 +37,11 @@ function drawMap(map, data, varargin)
 %           'y', 'm', 'c', 'w', 'k'). Default value is 'r';
 %       'lineWidth' is non-negative number for map line width. Zero means
 %           absense of map at all (widht of line is zero and 'nodeMarker'
-%           is 'none'. Default value is 2. 
+%           is 'none'. Default value is 2.
+%       'newFigure' is logical argument. Value true (default) causes
+%           creation of new figure. Value false causes usage of current
+%           active figure. THis option can be used for subplots and for map
+%           colouring.
 
     % Data preprocessing
     data = map.preprocessData(data);
@@ -54,6 +58,7 @@ function drawMap(map, data, varargin)
     nodeMarkerSize = 6;
     nodeColour = 'r';
     lineWidth = 2;
+    newFigure = false;
     
     for i=1:2:length(varargin)
         switch lower(varargin{i})
@@ -73,6 +78,8 @@ function drawMap(map, data, varargin)
                 nodeColour = varargin{i + 1};
             case 'linewidth'
                 lineWidth = varargin{i + 1};
+            case 'newFigure'
+                newFigure = varargin{i + 1};
             otherwise
                 error(['Unknown argument at position "', num2str(i + 2)]);
         end
@@ -107,22 +114,20 @@ function drawMap(map, data, varargin)
     end
     
     %Create figure
-    figure;
+    if newFigure
+        figure;
+    end
     %Get map coordinates
     maps = map.getMappedCoordinates;
     %get map links
     links = map.getLinks;
     if dim > 3 % Dimension is greater than 3 and we need to use PCs
         % Calculate three first PCs and project data onto PCs
-        if isempty(map.PCs)
-            means = mean(data);
-            dat = bsxfun(@minus, data, means);
-            [~, D, V] = svds(dat, 3);
-            D = diag(D);
-            [~, ind] = sort(D,'descend');
-            V = V(:,ind);
+        if ~map.preproc
+            dat = bsxfun(@minus, data, map.means);
+            V = map.PCs(:, 1:3);
             data = dat * V;
-            maps = bsxfun(@minus, maps, means) * V;
+            maps = bsxfun(@minus, maps, map.means) * V;
         end
         %Draw data
         for k = 1:nCls

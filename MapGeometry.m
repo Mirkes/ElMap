@@ -115,28 +115,17 @@ classdef MapGeometry  < handle
                 map.mapped = data(data,:);
             elseif strcmp('pci',type)
                 % Principal component initialization
-                % Centralise data
-                meanDat = mean(data);
-                % Calculate mean and PCs
-                if isempty(map.PCs)
-                    %Calculate requared number of PCs:
-                    data = bsxfun(@minus, data, meanDat);
-                    [~, D, V] = svds(data, map.dimension);
-                    D = diag(D);
-                    [~, ind] = sort(D,'descend');
-                    V = V(:,ind);
-
-                    %Normalize PCs' direction
-                    for k=1:map.dimension
-                        if V(k,k)<0
-                            V(:,k)=-V(:,k);
-                        end
-                    end
-                    tmp = data * V;
-                else
+                % Get mean and PCs
+                if map.preproc
                     % Data were preprocessed
                     V = eye(size(data, 2), map.dimension);
                     tmp = data(:, 1:map.dimension);
+                    meanDat = zeros(1, size(data, 2));
+                else
+                    % Get requared number of PCs:
+                    meanDat = map.means;
+                    V = map.PCs(:, 1:map.dimension);
+                    tmp = data * V;
                 end
                 
                 %Calculate mean and dispersion along each PCs
@@ -180,12 +169,19 @@ classdef MapGeometry  < handle
             [n, m] = size(data);
             reduce = floor(reduce);
             if reduce >= m || (reduce == 0 && n > m)
-                return;
-            end
-            % Define required number of coordinates
-            k = n - 1;
-            if reduce > 0 && reduce > k
-                k = reduce;
+                % Calculate 3 PCs and mean but do not apply preprocessing
+                k = 3;
+                if k > m
+                    k = m;
+                end
+                map.preproc = false;
+            else
+                % Define required number of coordinates
+                k = n - 1;
+                if reduce > 0 && reduce > k
+                    k = reduce;
+                end
+                map.preproc = true;
             end
             
             % Search required number of PCs
@@ -198,14 +194,16 @@ classdef MapGeometry  < handle
             ind = diag(V) < 0;
             V(:, ind) = -V(:, ind);
             % Store results
-            map.preproc = true;
             map.PCs = V;
-            % Preprocess data
-            data = map.preprocessData(data);
+            
+            % Preprocess data if it is required
+            if map.preproc
+                data = map.preprocessData(data);
+            end
         end
         
         function data = preprocessData(map, data)
-            if isempty(map.PCs)
+            if ~map.preproc
                 return;
             end
             data = bsxfun(@minus, data, map.means) * map.PCs;

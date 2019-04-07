@@ -1,7 +1,7 @@
 % test of “Five types of breast cancer” database
 
 % What is sum of the following masks
-what = 64;
+what = 15;
 
 % 1 - Initialise map
 % 2 - Draw original distribution
@@ -19,7 +19,7 @@ colours = ['b'; 'g'];
 % Data transformation if necessary
 if exist('d1n', 'var') == 0
     %There is no data. Load
-    load('brestCancer.mat');
+    load('breastCancer.mat');
 end
 
 if size(d1n, 1) > 286
@@ -67,7 +67,7 @@ if bitand(what, 16) ~= 0
 %             map = map2;
 %         end
         tic;
-        drawMapInt(map, d1n, 1, 'lineWidth', 0.5, 'nodeMarker', 'h',...
+        drawMapInt(map, d1n, 0, 'lineWidth', 0.5, 'nodeMarker', 'h',...
              'classes', col, 'markColour', colours);
         toc
 %     end
@@ -76,11 +76,11 @@ end
 if bitand(what, 32) ~= 0
     % Draw fitted map in internal coordinates, edges
     for k=1:2
-%         if k == 1
-%             map = map1;
-%         else
-%             map = map2;
-%         end
+        if k == 1
+            map = map1;
+        else
+            map = map2;
+        end
         tic;
         drawMapInt(map, d1n, 1, 'nodeMarker', 'none', 'lineWidth', 0.5,...
             'classes', col, 'markColour', colours,...
@@ -92,11 +92,11 @@ end
 if bitand(what, 64) ~= 0
     % Draw fitted map in internal coordinates, faces
     for k=1:2
-%         if k == 1
-%             map = map1;
-%         else
-%             map = map2;
-%         end
+        if k == 1
+            map = map1;
+        else
+            map = map2;
+        end
         tic;
         drawMapInt(map, d1n, 2, 'nodeMarker', 'none', 'lineWidth', 0.5,...
             'classes', col, 'markColour', colours,...
