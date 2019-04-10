@@ -353,8 +353,8 @@ function drawMapInt( map, data, projType, varargin )
                 maxx = max(intern);
                 axis([minn(1), maxx(1), minn(2), maxx(2)]);
                 % Now draw surface
-                trisurf(gridReady, intern(:, 1), intern(:, 2),...
-                    zeros(size(intern, 1), 1), f, 'FaceColor', 'interp',...
+                trisurf(gridReady, nodeInt(:, 1), nodeInt(:, 2),...
+                    zeros(size(nodeInt, 1), 1), f, 'FaceColor', 'interp',...
                     'EdgeColor', 'none');
                 %Draw edges
                 if mapDraw
@@ -362,7 +362,7 @@ function drawMapInt( map, data, projType, varargin )
                 end
             else
                 % Draw surface
-                trisurf(gridReady, intern(:, 1), intern(:, 2),...
+                trisurf(gridReady, nodeInt(:, 1), nodeInt(:, 2),...
                     f, 'FaceColor', 'interp', 'EdgeColor', 'none');
                 hold on;
                 %Draw edges

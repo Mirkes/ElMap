@@ -58,7 +58,7 @@ function drawMap(map, data, varargin)
     nodeMarkerSize = 6;
     nodeColour = 'r';
     lineWidth = 2;
-    newFigure = false;
+    newFigure = true;
     
     for i=1:2:length(varargin)
         switch lower(varargin{i})
@@ -151,6 +151,9 @@ function drawMap(map, data, varargin)
                 'MarkerFaceColor', nodeColour, 'MarkerEdgeColor', nodeColour,...
                 'MarkerSize', nodeMarkerSize, 'LineStyle', 'none');
         end
+        xlabel('PC1');
+        ylabel('PC2');
+        zlabel('PC3');
         axis equal;
     elseif dim == 3
         %3d data
