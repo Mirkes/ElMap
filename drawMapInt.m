@@ -54,8 +54,8 @@ function drawMapInt( map, data, projType, varargin )
 %           project type. Default value is 2. 
 %       'newFigure' is logical argument. Value true (default) causes
 %           creation of new figure. Value false causes usage of current
-%           active figure. This option can be used for subplots and for map
-%           colouring.
+%           active figure. This option can be used, for example, for
+%           subplots.
 %       'coloring' defines the type of data to colour. It can have
 %               following values: 
 %           [] (empty) means no colouring. It is default value.
@@ -80,17 +80,18 @@ function drawMapInt( map, data, projType, varargin )
 %           'lineWidth' to 0.5 if linewidth is not directly specified by
 %           user. 
 %       'ColorMap' is colormap to use for current graph. THis parameter has
-%           meaning for maps with colouring only. Colormap is standard Matlab
-%           colormap. It can be one of predefined colormaps or userdefined.
-%           For more details find Colormap in the Matlab documentation.
+%           meaning for maps with colouring only. Colormap is standard
+%           Matlab colormap. It can be one of predefined colormaps or
+%           userdefined. For more details find Colormap in the Matlab
+%           documentation. 
 %       'ColouringInSpace' is logical attribute. True value means
 %           calculation of density or another data defined colouring
 %           without projection onto map. False (default) value means
 %           firstly projection of data onto map and then calculation of
 %           colouring.
-%        'smooth' is positive real number. It is parameter of smoothing of
+%        'Smooth' is positive real number. It is parameter of smoothing of
 %           function interpolation for densities and other functions
-%           defined in the data points. Default value is 2. Data
+%           defined in the data points. Default value is 0.15. Data
 %           interpolation is implemented in radial basis function like
 %           fasion: for query point x we calculate squared distance to each
 %           data point d(i). Value of function in the point x is sum of
@@ -154,6 +155,8 @@ function drawMapInt( map, data, projType, varargin )
                 flatColoring = varargin{i + 1};
             case 'colouringinspace'
                 ColouringInSpace = varargin{i + 1};
+            case 'smooth'
+                smooth = varargin{i + 1};
             otherwise
                 error(['Unknown argument at position "', num2str(i + 2)]);
         end
@@ -207,6 +210,10 @@ function drawMapInt( map, data, projType, varargin )
             error('Map coloring can be used for 2D maps only');
         end
         
+        if ~isnumeric(smooth) || smooth <= 0
+            error('Smooth must be positive number.');
+        end
+        
         % Get data space dimension and mapped coordinates
         mapped = map.getMappedCoordinates;
         d = size(mapped, 2);
@@ -242,7 +249,8 @@ function drawMapInt( map, data, projType, varargin )
                     f = interpol(dataP, source, nodeInt, smooth);
                 end
             elseif ismatrix(source)
-                if size(source, 2) ~= d + 1
+                temp = map.preprocessData(source(:, 1:d));
+                if size(temp, 2) ~= d
                     error(['Wrong dimension of matrix in source argument\n',...
                         'Matrix of datapoints with function to draw must be\n',...
                         'n-by-(d+1) matrix with one data point in the\n',...
@@ -253,13 +261,14 @@ function drawMapInt( map, data, projType, varargin )
                 end
                 % Calculate influence of datapoints in nodes
                 if ColouringInSpace
-                    f = interpol(source(:, 1:d), source(:, end),...
+                    f = interpol(temp, source(:, end),...
                         nodeMap, smooth);
                 else
                     f = interpol(...
-                        map.project(source(:, 1:d), projType, 'internal'),...
+                        map.project(temp, projType, 'internal'),...
                         source(:, end), nodeInt, smooth);
                 end
+                clear temp;
             else
                 tmp = true;
             end
@@ -332,10 +341,10 @@ function drawMapInt( map, data, projType, varargin )
     if dim > 3
         
     elseif dim == 3
-        %3d data
+        % 3d map
         
     elseif dim == 2
-        %two dimensional data
+        % Two dimensional map
         hold off;
         %Form edges
         %Prepare arrays
