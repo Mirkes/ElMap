@@ -84,12 +84,12 @@ function drawMapInt( map, data, projType, varargin )
 %           Matlab colormap. It can be one of predefined colormaps or
 %           userdefined. For more details find Colormap in the Matlab
 %           documentation. 
-%       'ColouringInSpace' is logical attribute. True value means
+%       'ColoringInSpace' is logical attribute. True value means
 %           calculation of density or another data defined colouring
 %           without projection onto map. False (default) value means
 %           firstly projection of data onto map and then calculation of
 %           colouring.
-%        'Smooth' is positive real number. It is parameter of smoothing of
+%       'Smooth' is positive real number. It is parameter of smoothing of
 %           function interpolation for densities and other functions
 %           defined in the data points. Default value is 0.15. Data
 %           interpolation is implemented in radial basis function like
@@ -97,6 +97,23 @@ function drawMapInt( map, data, projType, varargin )
 %           data point d(i). Value of function in the point x is sum of
 %           exp(-d(i)/(smooth*s2)) where s2 is mean of variances of all
 %           attributes.
+%       'Graph' draw graph of specified function for 1D map. Graph is
+%           similar to 'coloring' parameter and can be
+%           [] (empty) means no graphs. It is default value.
+%           'density' is density graph. It is equivalent to vector of
+%               ones.
+%           fun is function handle of form function res = fun(X), where X
+%               is n-by-d matrix with one data point per row and res is
+%               n-by-1 vector with values to use. Coordinate of vector X
+%               are defined in PREPROCESSED space.
+%           k is positive integer number. In this case k is number of
+%               coordinate to use.
+%           vect is n-by-1 vector with data defined function. Each element
+%               of vector corresponds to data point in matrix data.
+%           matr is N-by-(d+1) matrix with one data point in the nfirst d
+%               columns of each row and value of function of this point in
+%               the last column. For example to calculate density function
+%               it is necessary to send data matrix with 1 in (d+1) column. 
 %
 
     if nargin < 3
@@ -105,6 +122,8 @@ function drawMapInt( map, data, projType, varargin )
     
     % Data preprocessing
     data = map.preprocessData(data);
+    % Get number of data points
+    N = size(data, 1);
 
     % Default values of optional parameters
     classes = [];
@@ -123,6 +142,7 @@ function drawMapInt( map, data, projType, varargin )
     nodeMarkerSpecified = false;
     lineWidthSpecified = false;
     smooth = 0.15;
+    graph = [];
     % Parse optional parameters
     for i=1:2:length(varargin)
         switch lower(varargin{i})
@@ -153,10 +173,12 @@ function drawMapInt( map, data, projType, varargin )
                 colMap = varargin{i + 1};
             case 'flatcoloring'
                 flatColoring = varargin{i + 1};
-            case 'colouringinspace'
+            case {'colouringinspace', 'coloringinspace'}
                 ColouringInSpace = varargin{i + 1};
             case 'smooth'
                 smooth = varargin{i + 1};
+            case 'graph'
+                graph = varargin{i + 1};
             otherwise
                 error(['Unknown argument at position "', num2str(i + 2)]);
         end
@@ -164,7 +186,7 @@ function drawMapInt( map, data, projType, varargin )
 
     % Sanity check of arguments.
     if isempty(classes)
-        classes = ones(size(data, 1), 1);
+        classes = ones(N, 1);
         cls = 1;
     else
         cls = unique(classes);
@@ -198,6 +220,9 @@ function drawMapInt( map, data, projType, varargin )
     if ~isempty(data)
         dataP = map.project(data, projType, 'internal');
     end
+    
+    % Just in case value of function for colouring or graph is 
+    f = 0;
     
     % Check colouring parameters
     if ~isempty(source)
@@ -234,13 +259,13 @@ function drawMapInt( map, data, projType, varargin )
                         source, d);
                 end
                 % Get required coordinate
-                f = mapped(:, source);
+                f = nodeMap(:, source);
             elseif isvector(source)
                 source = source(:);
-                if size(source, 1) ~= size(data, 1)
+                if size(source, 1) ~= N
                     error(['Number of elements in vector "coloring"',...
                         ' %d must coincides with number of data points %d'],...
-                        size(source, 1), size(data, 1));
+                        size(source, 1), N);
                 end
                 
                 if ColouringInSpace
@@ -274,13 +299,13 @@ function drawMapInt( map, data, projType, varargin )
             end
         elseif ischar(source) && strcmp(source, 'density')
             if ColouringInSpace
-                f = interpol(data, ones(size(data, 1), 1), nodeMap, smooth);
+                f = interpol(data, ones(N, 1), nodeMap, smooth);
             else
-                f = interpol(dataP, ones(size(data, 1), 1), nodeInt, smooth);
+                f = interpol(dataP, ones(N, 1), nodeInt, smooth);
             end
         elseif isa(source, 'function_handle')
             % Get values to draw
-            f = source(mapped);
+            f = source(nodeMap);
         else
             tmp = true;
         end
@@ -308,6 +333,125 @@ function drawMapInt( map, data, projType, varargin )
         end
         
         %Including of colouring by default removes drawing of nodes and
+        %sets map edges line width to 0.5 if other options are not
+        %specified by user.   
+        %
+        %3D map colouring automatically excludes data drawing, removes
+        %nodes and sets map edges line width to 0.5 if other options are
+        %not specified by user.  
+        if ~nodeMarkerSpecified 
+            nodeMarker = 'none';
+        end
+        if ~lineWidthSpecified
+            lineWidth = 0.5;
+        end
+    end
+    
+    % Check graph parameters
+    if ~isempty(graph)
+        
+        if map.getDimension() ~= 1
+            error('Map coloring can be used for 1D maps only');
+        end
+        
+        if ~isnumeric(smooth) || smooth <= 0
+            error('Smooth must be positive number.');
+        end
+        
+        % Get data space dimension and mapped coordinates
+        mapped = map.getMappedCoordinates;
+        d = size(mapped, 2);
+        
+        % Extract detailed grid for graph
+        [nodeMap, nodeInt] = formGraphGrid(mapped, intern);
+        
+        % Check the correctness of graph parameter
+        % Identify type of source
+        tmp = false;
+        if isnumeric(graph) 
+            if isscalar(graph)
+                source = round(graph);
+                if graph < 0 || graph > d
+                    error(['Number of coordinate (value of "graph")',...
+                        ' %d to draw must be positive and cannot be',...
+                        ' greater than data space dimension %d'],...
+                        source, d);
+                end
+                % Get required coordinate
+                f = nodeMap(:, graph);
+            elseif isvector(graph)
+                source = source(:);
+                if size(source, 1) ~= size(data, 1)
+                    error(['Number of elements in vector "graph"',...
+                        ' %d must coincides with number of data points %d'],...
+                        size(source, 1), size(data, 1));
+                end
+                
+                if ColouringInSpace
+                    f = interpolGraph(data, source, nodeMap, smooth);
+                else
+                    f = interpolGraph(dataP, source, nodeInt, smooth);
+                end
+            elseif ismatrix(graph)
+                temp = map.preprocessData(source(:, 1:d));
+                if size(temp, 2) ~= d
+                    error(['Wrong dimension of matrix in graph argument\n',...
+                        'Matrix of datapoints with function to draw must be\n',...
+                        'n-by-(d+1) matrix with one data point in the\n',...
+                        'first d columns of each row and value of function\n',...
+                        'of this point in the last column. For example\n',...
+                        'to calculate density function it is necessary\n',...
+                        'to send data matrix with 1 in (d+1) column.\n%s'],'');
+                end
+                % Calculate influence of datapoints in nodes
+                if ColouringInSpace
+                    f = interpolGraph(temp, source(:, end),...
+                        nodeMap, smooth);
+                else
+                    f = interpolGraph(...
+                        map.project(temp, projType, 'internal'),...
+                        source(:, end), nodeInt, smooth);
+                end
+                clear temp;
+            else
+                tmp = true;
+            end
+        elseif ischar(graph) && strcmp(graph, 'density')
+            if ColouringInSpace
+                f = interpolGraph(data, ones(N, 1), nodeMap, smooth);
+            else
+                f = interpolGraph(dataP, ones(N, 1), nodeInt, smooth);
+            end
+        elseif isa(source, 'function_handle')
+            % Get values to draw
+            f = source(nodeMap);
+        else
+            tmp = true;
+        end
+    
+        % Throw error is necessary
+        if tmp
+            error(['Wrong type of graph argument. Source must be',...
+                ' either\n  [] (empty) means no graph. It is',...
+                ' default value.\n  fun is function handle of form',...
+                ' function res = fun(X), where X\n     is n-by-d matrix',...
+                ' with one data point per row and res is\n     n-by-1',...
+                ' vector with values to use. Coordinate of vector X\n',...
+                '     are defined in PREPROCESSED space.\n',...
+                '  k is positive integer number. In this case k is',...
+                ' number of\n     coordinate to use.\n',...
+                '  vect is n-by-1 vector with data defined function.',...
+                ' Each element\n     of vector corresponds to data',...
+                ' point in matrix data.\n',...
+                '  matr is N-by-(d+1) matrix with one data point in',...
+                ' the nfirst d\n     columns of each row and value of',...
+                ' function of this point in\n     the last column.',...
+                ' For example to calculate density function\n',...
+                '     it is necessary to send data matrix with 1 in',...
+                ' (d+1)     column.\n%s'],'');
+        end
+        
+        %Including of graph by default removes drawing of nodes and
         %sets map edges line width to 0.5 if other options are not
         %specified by user.   
         %
@@ -478,8 +622,26 @@ function drawMapInt( map, data, projType, varargin )
                         drawPieChart(dat(k, 1), 0,...
                             0.5 * count(k) / ma, props(k, :), markColour);
                     end
-                    axis([lims(1:2), lims(1:2) - sum(lims(1:2)) / 2]);
+                    lims(3:4) = lims(1:2) - sum(lims(1:2)) / 2;
+                    axis(lims);
                 end
+                % Renormalise function to use
+                mins = min(f);
+                maxs = max(f);
+                if mins < 0 
+                    mins = lims(3) / mins;
+                else
+                    mins = 0;
+                end
+                if maxs > 0 
+                    maxs = lims(4) / maxs;
+                else
+                    maxs = 0;
+                end
+                if mins > maxs || mins == 0
+                    mins = maxs;
+                end
+                f = f * mins;
             end
         else
             %Draw maps nodes
@@ -495,10 +657,13 @@ function drawMapInt( map, data, projType, varargin )
                         [markColour(k), markShape(k)],...
                         'MarkerFaceColor', markColour(k),...
                         'MarkerSize', markSize(k));
-                    hold on
                 end
             end
         end
+    end
+    % Draw graph if required
+    if ~isempty(graph)
+        plot(nodeInt, f, 'k-');
     end
 end
 
@@ -553,4 +718,53 @@ function [grid, maps, inter] = formGrid(grid, maps, inter)
     % Step 4. Form final list of triangles
     grid = [face(:, [2, 4, 5]); face(:, [1, 4, 6]);...
         face(:, [3, 5, 6]); face(:, [4, 5, 6])];
+end
+
+function [nodeMap, nodeInt] = formGraphGrid(mapped, intern)
+    % This is standard 1D map - polyline with standatd numeration from 1 to
+    % N where N is the last node.
+    % We use divider nDiv for map
+    nDiv = 10;
+    step = 1 / nDiv;
+    arr = 0:step:1;
+    arr = arr(1:nDiv);
+    % Form internal
+    nodeInt = bsxfun(@plus, intern, arr)';
+    nodeInt = nodeInt(:);
+    nodeInt = nodeInt(1:end - nDiv + 1);
+    % Form external
+    [n, m] = size(mapped);
+    nodeMap = zeros((n - 1) * nDiv + 1, m);
+    % Fill extern
+    arr = arr(2:end)';
+    for k = 1:n - 1
+        nodeMap((k - 1) * nDiv + 1, :) = mapped(k, :);
+        nodeMap((k - 1) * nDiv + 2:k * nDiv, :) = ...
+            bsxfun(@plus, mapped(k, :),...
+            bsxfun(@times, mapped(k + 1, :) - mapped(k, :), arr));
+    end
+    nodeMap(end, :) = mapped(end, :);
+end
+
+function res = interpolGraph(X, y, nodes, r)
+%interpol calculates value of function y defined in data points X in each
+%node from nodes.
+%
+%Inputs:
+%   X is n-by-d data matrix with one datapoint in each row.
+%   y is n-by-1 vector with values of function. y(i) contains function
+%       value for point X(i, :).
+%   nodes is m-by-d matrix of nodes to calculate function values.
+%   r is smoothing parameter for function calculation.
+%
+
+    % Calculate distances from each node to each datapoint
+    dist = bsxfun(@plus, sum(X.^2,2), sum(nodes.^2, 2)') - 2 * (X * nodes');
+    % Calclulate RBF in each point
+    tmp = bsxfun(@times, exp(- dist * r), y);
+    % Calculate result
+    res = sum(tmp)';
+    % Normalise result
+    mins = min(res);
+    res = (res - mins) / (max(res) - mins);
 end

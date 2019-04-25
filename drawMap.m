@@ -64,7 +64,7 @@ function drawMap(map, data, varargin)
 %           Matlab colormap. It can be one of predefined colormaps or
 %           userdefined. For more details find Colormap in the Matlab
 %           documentation. 
-%       'ColouringInSpace' is logical attribute. True value means
+%       'ColoringInSpace' is logical attribute. True value means
 %           calculation of density or another data defined colouring
 %           without projection onto map. False (default) value means
 %           firstly projection of data onto map and then calculation of
@@ -137,7 +137,7 @@ function drawMap(map, data, varargin)
                 source = varargin{i + 1};
             case 'colormap'
                 colMap = varargin{i + 1};
-            case 'colouringinspace'
+            case {'coloringinspace', 'colouringinspace'}
                 ColouringInSpace = varargin{i + 1};
             case 'smooth'
                 smooth = varargin{i + 1};
@@ -218,7 +218,7 @@ function drawMap(map, data, varargin)
                         source, dim);
                 end
                 % Get required coordinate
-                f = maps(:, source);
+                f = nodeMap(:, source);
             elseif isvector(source)
                 source = source(:);
                 if size(source, 1) ~= N
@@ -266,7 +266,7 @@ function drawMap(map, data, varargin)
             end
         elseif isa(source, 'function_handle')
             % Get values to draw
-            f = source(maps);
+            f = source(nodeMap);
         else
             tmp = true;
         end
