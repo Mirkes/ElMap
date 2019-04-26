@@ -12,23 +12,23 @@ classdef rect2DMap < MapGeometry
             if nargin < 2
                 error('You MUST specify number of rows and columns for rect2DMap');
             end
-            %Create map
+            % Create map
             map@MapGeometry(2);
             % Store size
             map.sizes = [rows, cols];
-            %Calculate internal coordinates of nodes
+            % Calculate internal coordinates of nodes
             N=rows*cols;
             a1=repmat(1:cols,rows,1);
             a2=repmat((1:rows)',1,cols);
             map.internal = [a1(:),a2(:)];
-            %form array of links
+            % Form array of links
             A=reshape(1:N,rows,cols);
             B=A(1:end-1,:);
             C=A(2:end,:);
             D=A(:,1:end-1);
             E=A(:,2:end);
             map.links = [B(:), C(:); D(:), E(:)];
-            %form array of ribs
+            % Form array of ribs
             B1=A(1:end-2,:);
             B2=A(2:end-1,:);
             B3=A(3:end,:);
@@ -36,7 +36,7 @@ classdef rect2DMap < MapGeometry
             C2=A(:,2:end-1);
             C3=A(:,3:end);
             map.ribs = [B1(:), B2(:), B3(:); C1(:), C2(:), C3(:)];
-            %form array of faces
+            % Form array of faces
             B1 = A(1:end-1,1:end-1);
             B2 = A(2:end,1:end-1);
             B3 = A(1:end-1,2:end);
@@ -44,12 +44,12 @@ classdef rect2DMap < MapGeometry
             C2 = A(2:end,1:end-1);
             C3 = A(2:end,2:end);
             map.faces=[B1(:), B2(:), B3(:); C1(:), C2(:), C3(:)];
-            %Set mappedcoordinates to empty set
+            % Set mapped coordinates to empty set
             map.mapped = [];
         end
         
         function face = getFaces(map)
-            %method to access to the feces of map
+            %Function to access to the faces of map.
             %face is k-by-3 matrix. Each row contains three numbers of
             %nodes which form one face.
             face=map.faces;

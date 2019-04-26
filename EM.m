@@ -37,13 +37,13 @@ function EM(map, data, varargin)
 %           'intshrinkage'. Maximal value M is calculated as maximum among
 %           data points of distance from data points to the nearest node of
 %           map after initiation. Then this value is multiplied by
-%           'intshrinkage'. All other boreders are calcualted as r(i) =
+%           'intshrinkage'. All other borders are calculated as r(i) =
 %           M*i^2/p^2, where p is number_of_intervals'. Ignored if
 %           'potential' is not specified. 
 %       'Number_of_intervals' specifies the number of intervals to
 %           automatic interval calculation. Default value is 5. Ignored if
 %           'potential' is not specified. 
-%       'intshrinkage' is fraction of  maximal distance from data points to
+%       'intshrinkage' is fraction of maximal distance from data points to
 %           original map which is used for intervals shrinkage (see
 %           argument delta in defineIntervals). Default value is 1 (no
 %           shrinkage). Ignored if 'potential' is not specified.
@@ -55,8 +55,8 @@ function EM(map, data, varargin)
 % algorithm:
 %   1. associate each data point with nearest node.
 %   2. recalculate node position.
-% Process of map fitting is stopped if new values of stratching and bending
-% modulo are the same as on previous epoch OR if both stratching and
+% Process of map fitting is stopped if new values of stretching and bending
+% modulo are the same as on previous epoch OR if both stretching and
 % bending modulo are zero.
 
     % Check the number of input attributes and types of the two first
@@ -117,7 +117,7 @@ function EM(map, data, varargin)
             else
                 strFun = @constStretch;
                 constStretching = tmp;
-            end;
+            end
         elseif strcmpi(varargin{i}, 'bend')
             tmp = varargin{i + 1};
             if isa(tmp, 'function_handle')
@@ -125,7 +125,7 @@ function EM(map, data, varargin)
             else
                 bendFun = @constBend;
                 constBending = tmp;
-            end;
+            end
         elseif strcmpi(varargin{i}, 'weights')
             weights = varargin{i + 1};
         elseif strcmpi(varargin{i}, 'intervals')
@@ -193,7 +193,7 @@ function EM(map, data, varargin)
             end
             pFunc = definePotentialFunction(map.getDisp(), nInt, func, delta);
         else
-            %intervals must contains non nerative values in ascending order.
+            %intervals must contains non negative values in ascending order.
             %The first value must be zero.
             if intervals(1)~=0 || ~all(isfinite(intervals)) ...
                     || any((intervals(2:end)-intervals(1:end-1))<=0)
@@ -332,7 +332,7 @@ end
 function [A,B] = computeABcoefficients(intervals, potential_function_handle)
 %PQSQR_computeABcoefficients calculates the coefficients a and b for
 %quadratic fragments of potential function.
-%   intervals is the 1-by-K matrix of intervals' boudaries without final
+%   intervals is the 1-by-K matrix of intervals' boundaries without final
 %       infinit boundary.
 %   potential_function_handle is a handle of majorant function.
 

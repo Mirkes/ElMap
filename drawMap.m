@@ -2,7 +2,7 @@ function drawMap(map, data, varargin)
 %drawMap create figure and draw data and maps. If data dimension (number of
 %columns) is less than 3 then original data coordinate system is used. If
 %data dimension is greater than 3 then projection into space of the first
-%three PCs is used for drowing.
+%three PCs is used for drawing.
 %
 %Usage
 %   drawMap(map, data);
@@ -11,7 +11,13 @@ function drawMap(map, data, varargin)
 %Inputs:
 %   map is object of class MapGeometry (descendant of this class).
 %   data is n-by-dim matrix of data points. Each row is one point.
-%   There are several possible Name, value pairs:
+%   There are several possible 'Name', value pairs:
+%       'axes' is array of three different nonzero integer. This argument
+%           can be used for space with more than three coordinates only.
+%           The first number is vector for x axis, the second number is
+%           vector for y axis and the third number is vector for z axis.
+%           Positive number means number of coordinate in original space.
+%           Negative number mean specified principal component.
 %       'classes' is n-by-1 vector of class labels for points. Each label
 %           is positive integer number which is the index of cell array
 %           with marker descriptions. Marker descriptions can be specified
@@ -30,14 +36,14 @@ function drawMap(map, data, varargin)
 %           all markers.
 %       'nodeMarker' is one of the possible marker shape symbol ('o', '+',
 %           '*', '.', 'x', 's', 'd', '^', 'v', '<', '>', 'p', 'h') or
-%           'none'. Default value is 'o'.
+%           'none'. Default value is 'none'.
 %       'nodeMarkerSize' is positive number which is size of node marker.
 %           Default value is 6;
 %       'nodeColour' is one of the possible Matlab colours ('r', 'g', 'b',
 %           'y', 'm', 'c', 'w', 'k'). Default value is 'r';
 %       'lineWidth' is non-negative number for map line width. Zero means
-%           absense of map at all (widht of line is zero and 'nodeMarker'
-%           is 'none'. Default value is 2.
+%           absence of map at all (width of line is zero and 'nodeMarker'
+%           is 'none'. Default value is 0.5.
 %       'newFigure' is logical argument. Value true (default) causes
 %           creation of new figure. Value false causes usage of current
 %           active figure. This option can be used, for example, for
@@ -53,16 +59,18 @@ function drawMap(map, data, varargin)
 %               are defined in PREPROCESSED space.
 %           k is positive integer number. In this case k is number of
 %               coordinate to use.
+%           k is negative integer number. In this case map is coloured by
+%               value of projection on the k'th principal component.
 %           vect is n-by-1 vector with data defined function. Each element
 %               of vector corresponds to data point in matrix data.
-%           matr is N-by-(d+1) matrix with one data point in the nfirst d
+%           matr is N-by-(d+1) matrix with one data point in the first d
 %               columns of each row and value of function of this point in
 %               the last column. For example to calculate density function
 %               it is necessary to send data matrix with 1 in (d+1) column. 
-%       'ColorMap' is colormap to use for current graph. THis parameter has
+%       'ColorMap' is colormap to use for current graph. This parameter has
 %           meaning for maps with colouring only. Colormap is standard
 %           Matlab colormap. It can be one of predefined colormaps or
-%           userdefined. For more details find Colormap in the Matlab
+%           user defined. For more details find Colormap in the Matlab
 %           documentation. 
 %       'ColoringInSpace' is logical attribute. True value means
 %           calculation of density or another data defined colouring
@@ -77,7 +85,7 @@ function drawMap(map, data, varargin)
 %           data point d(i). Value of function in the point x is sum of
 %           exp(-d(i)/(smooth*s2)) where s2 is mean of variances of all
 %           attributes.
-%       'projType' is type of  projection onto map. Projection is necessary
+%       'projType' is type of projection onto map. Projection is necessary
 %           to create colouring from the function defined in the data
 %           points including densities. projType can have following values: 
 %               0 is projection to the nearest node,
@@ -97,10 +105,10 @@ function drawMap(map, data, varargin)
     markColour = [];
     markShape = [];
     markSize = [];
-    nodeMarker = 'o';
+    nodeMarker = 'none';
     nodeMarkerSize = 6;
     nodeColour = 'r';
-    lineWidth = 2;
+    lineWidth = 0.5;
     newFigure = true;
     source = [];
     colMap = parula;
@@ -109,9 +117,12 @@ function drawMap(map, data, varargin)
     lineWidthSpecified = false;
     smooth = 0.15;
     projType = 0;
+    axeS = [];
     
     for i=1:2:length(varargin)
         switch lower(varargin{i})
+            case 'axes'
+                axeS = varargin{i + 1};
             case 'classes'
                 classes = varargin{i + 1};
             case 'markcolour'
@@ -177,6 +188,21 @@ function drawMap(map, data, varargin)
         mapDraw = 1;
     end
     
+    if ~isempty(axeS)
+        if length(axeS) ~= 3 || ~isnumeric(axeS) || any(axeS == 0)...
+                || length(unique(axeS)) ~= 3
+            error(['"axes" must be array of three different nonzero',...
+                ' integers. This argument can be used for space',...
+                ' with more than three coordinates only. The',...
+                ' first number is vector for x axis, the second',...
+                ' number is vector for y axis and the third',...
+                ' number is vector for z axis. Positive number',...
+                ' means number of coordinate in original space.',...
+                ' Negative number mean specified principal',...
+                ' component.']);
+        end
+    end
+                
     %Create figure
     if newFigure
         figure;
@@ -211,14 +237,43 @@ function drawMap(map, data, varargin)
         if isnumeric(source) 
             if isscalar(source)
                 source = round(source);
-                if source < 0 || source > dim
+                % It is number of coordinate or PCs
+                source = round(source);
+                if source > 0
+                   % It is coordinate
+                   % Get data in original space
+                   temp = map.deprocessData(nodeMap);
+                   if source > size(temp, 2)
+                       error(['Number of coordinate (value of "coloring")',...
+                           ' %d to draw must be positive and cannot be',...
+                           ' greater than data space dimension %d'],...
+                           source, size(temp, 2));
+                   end
+                   f = temp(:, source);
+                elseif source == 0
                     error(['Number of coordinate (value of "coloring")',...
-                        ' %d to draw must be positive and cannot be',...
-                        ' greater than data space dimension %d'],...
-                        source, dim);
+                        ' to draw must be positive and number of',...
+                        ' principal component must be negative.',...
+                        ' Value of "coloring" cannot be zero']);
+                else
+                    if -source > size(map.PCs, 2)
+                       error(['Number of principal component (MINUS',...
+                           ' value of "source") %d to draw',...
+                           ' must be positive and cannot be greater',...
+                           ' than %d which is the number of',...
+                           ' principal component calculated at map',...
+                           ' initialisation'],...
+                           -source, size(map.PCs, 2));
+                    end
+                    if map.preproc
+                        % Get required coordinate
+                        f = nodeMap(:, -source);
+                    else
+                        % Calculate projection on required PC
+                        f = bsxfun(@minus, nodeMap, map.means)...
+                            * map.PCs(:, -source);
+                    end
                 end
-                % Get required coordinate
-                f = nodeMap(:, source);
             elseif isvector(source)
                 source = source(:);
                 if size(source, 1) ~= N
@@ -237,14 +292,14 @@ function drawMap(map, data, varargin)
                 temp = map.preprocessData(source(:, 1:d));
                 if size(temp, 2) ~= dim
                     error(['Wrong dimension of matrix in source argument\n',...
-                        'Matrix of datapoints with function to draw must be\n',...
+                        'Matrix of data points with function to draw must be\n',...
                         'n-by-(d+1) matrix with one data point in the\n',...
                         'first d columns of each row and value of function\n',...
                         'of this point in the last column. For example\n',...
                         'to calculate density function it is necessary\n',...
                         'to send data matrix with 1 in (d+1) column.\n%s'],'');
                 end
-                % Calculate influence of datapoints in nodes
+                % Calculate influence of data points in nodes
                 if ColouringInSpace
                     f = interpol(temp, source(:, end),...
                         nodeMap, smooth);
@@ -274,20 +329,25 @@ function drawMap(map, data, varargin)
         % Throw error is necessary
         if tmp
             error(['Wrong type of source argument. Source must be',...
-                ' either\n  [] (empty) means no colouring. It is',...
-                ' default value.\n  fun is function handle of form',...
-                ' function res = fun(X), where X\n     is n-by-d matrix',...
-                ' with one data point per row and res is\n     n-by-1',...
-                ' vector with values to use. Coordinate of vector X\n',...
-                '     are defined in PREPROCESSED space.\n',...
-                '  k is positive integer number. In this case k is',...
-                ' number of\n     coordinate to use.\n',...
-                '  vect is n-by-1 vector with data defined function.',...
-                ' Each element\n     of vector corresponds to data',...
-                ' point in matrix data.\n',...
-                '  matr is N-by-(d+1) matrix with one data point in',...
-                ' the nfirst d\n     columns of each row and value of',...
-                ' function of this point in\n     the last column.',...
+                ' either\n',...
+                '[] (empty) means no colouring. It is default value.\n',...
+                '''density'' is density colouring. It is equivalent to vector of\n',...
+                '     ones.\n',...
+                'fun is function handle of form function res = fun(X), where X\n',...
+                '     is n-by-d matrix with one data point per row and res is\n',...
+                '     n-by-1 vector with values to use. Coordinates of vector X\n',...
+                '     are defined in original space even for map for preprocessed\n',...
+                '     data.\n',...
+                'k is positive integer number. In this case k is number of\n',...
+                '     coordinate to use.\n',...
+                'k is negative integer number. In this case map is coloured by\n',...
+                '     value of projection on the k''th principal component.\n',...
+                'vect is n-by-1 vector with data defined function. Each element\n',...
+                '     of vector corresponds to data point in matrix data.\n',...
+                'matr is N-by-(d+1) matrix with one data point in the first d\n',...
+                '     columns of each row and value of function of this point in\n',...
+                '     the last column. For example to calculate density function\n',...
+                '     it is necessary to send data matrix with 1 in (d+1) column.\n',...
                 ' For example to calculate density function\n',...
                 '     it is necessary to send data matrix with 1 in',...
                 ' (d+1)     column.\n%s'],'');
@@ -306,12 +366,53 @@ function drawMap(map, data, varargin)
         if ~lineWidthSpecified
             lineWidth = 0.5;
         end
-
-        if dim > 3 % Dimension is greater than 3 and we need to use PCs
-            % Project data onto PCs if it is necessary
-            if ~map.preproc
-                V = map.PCs(:, 1:3);
-                nodeMap = bsxfun(@minus, nodeMap, map.means) * V;
+        if dim > 3 
+            % Dimension is greater than 3 and we need to use PCs or
+            % specified coordinates
+            if isempty(axeS)
+                % By default Project data onto three PCs if it is necessary
+                if ~map.preproc
+                    V = map.PCs(:, 1:3);
+                    nodeMap = bsxfun(@minus, nodeMap, map.means) * V;
+                end
+            else
+                % Create copy of node coordinates
+                tmp = nodeMap;
+                % Create new array for node coordinates
+                nodeMap = zeros(size(nodeMap, 1), 3);
+                % Check the necessity of original coordinates
+                ind = axeS > 0;
+                if sum(ind) > 0
+                    % At least one coordinate will be used. We need to
+                    % restore it
+                    temp = map.deprocessData(tmp);
+                    if any(axeS > size(temp, 2))
+                        error(['Number of coordinate cannot be greater',...
+                            ' than dimension of original space']);
+                    end
+                    nodeMap(:, ind) = temp(:, axeS(ind));
+                end
+                ind = ~ind;
+                % Check the necessity of PCs
+                if sum(ind) > 0
+                    % At least on PCs will be used
+                    if any(axeS < -size(map.PCs, 2))
+                       error(['Number of principal component (MINUS',...
+                           ' value of "axes") %d %d %d to use',...
+                           ' must be positive and cannot be greater',...
+                           ' than %d which is the number of',...
+                           ' principal component calculated at map',...
+                           ' initialisation'],...
+                           -axeS(1), -axeS(2), -axeS(3), size(map.PCs, 2));
+                    end
+                    if map.preproc
+                        nodeMap(:, ind) = tmp(:, axeS(ind));
+                    else
+                        % Calculate projection on required PC
+                        nodeMap(:, ind) = bsxfun(@minus, tmp, map.means)...
+                            * map.PCs(:, -axeS(ind));
+                    end
+                end
             end
         end
         if dim > 2
@@ -331,13 +432,62 @@ function drawMap(map, data, varargin)
     
     %get map links
     links = map.getLinks;
-    if dim > 3 % Dimension is greater than 3 and we need to use PCs
-        % Project data onto PCs if it is necessary
-        if ~map.preproc
-            dat = bsxfun(@minus, data, map.means);
-            V = map.PCs(:, 1:3);
-            data = dat * V;
-            maps = bsxfun(@minus, maps, map.means) * V;
+    if dim > 3 
+        % Dimension is greater than 3 and we need to use three PCs or user
+        % specified axes
+        if isempty(axeS)
+            % Project data onto PCs if it is necessary
+            if ~map.preproc
+                data = bsxfun(@minus, data, map.means);
+                V = map.PCs(:, 1:3);
+                data = data * V;
+                maps = bsxfun(@minus, maps, map.means) * V;
+            end
+        else
+            % Create copy of node coordinates and data coordinates
+            tmp = maps;
+            dataTmp = data;
+            % Create new arrays for node coordinates and data
+            maps = zeros(size(maps, 1), 3);
+            data = zeros(size(data, 1), 3);
+            % Check the necessity of original coordinates
+            ind = axeS > 0;
+            if sum(ind) > 0
+                % At least one coordinate will be used. We need to
+                % restore it
+                temp = map.deprocessData(tmp);
+                if any(axeS > size(temp, 2))
+                    error(['Number of coordinate cannot be greater',...
+                        ' than dimension of original space']);
+                end
+                maps(:, ind) = temp(:, axeS(ind));
+                temp = map.deprocessData(dataTmp);
+                data(:, ind) = temp(:, axeS(ind));
+            end
+            ind = ~ind;
+            % Check the necessity of PCs
+            if sum(ind) > 0
+                % At least on PCs will be used
+                if any(axeS < -size(map.PCs, 2))
+                    error(['Number of principal component (MINUS',...
+                        ' value of "axes") %d %d %d to use',...
+                        ' must be positive and cannot be greater',...
+                        ' than %d which is the number of',...
+                        ' principal component calculated at map',...
+                        ' initialisation'],...
+                        -axeS(1), -axeS(2), -axeS(3), size(map.PCs, 2));
+                end
+                if map.preproc
+                    maps(:, ind) = tmp(:, axeS(ind));
+                    data(:, ind) = dataTmp(:, axeS(ind));
+                else
+                    % Calculate projection on required PC
+                    maps(:, ind) = bsxfun(@minus, tmp, map.means)...
+                        * map.PCs(:, -axeS(ind));
+                    data(:, ind) = bsxfun(@minus, dataTmp, map.means)...
+                        * map.PCs(:, -axeS(ind));
+                end
+            end
         end
         %Draw data
         for k = 1:nCls
@@ -361,9 +511,27 @@ function drawMap(map, data, varargin)
                 'MarkerFaceColor', nodeColour, 'MarkerEdgeColor', nodeColour,...
                 'MarkerSize', nodeMarkerSize, 'LineStyle', 'none');
         end
-        xlabel('PC1');
-        ylabel('PC2');
-        zlabel('PC3');
+        if isempty(axeS)
+            xlabel('PC1');
+            ylabel('PC2');
+            zlabel('PC3');
+        else
+            if axeS(1) > 0 
+                xlabel(['Attr', num2str(axeS(1))]);
+            else
+                xlabel(['PC', num2str(-axeS(1))]);
+            end
+            if axeS(2) > 0 
+                ylabel(['Attr', num2str(axeS(2))]);
+            else
+                ylabel(['PC', num2str(-axeS(2))]);
+            end
+            if axeS(3) > 0 
+                zlabel(['Attr', num2str(axeS(3))]);
+            else
+                zlabel(['PC', num2str(-axeS(3))]);
+            end
+        end
         axis equal;
     elseif dim == 3
         %3d data
@@ -446,7 +614,7 @@ function res = interpol(X, y, nodes, r)
 %node from nodes.
 %
 %Inputs:
-%   X is n-by-d data matrix with one datapoint in each row.
+%   X is n-by-d data matrix with one data point in each row.
 %   y is n-by-1 vector with values of function. y(i) contains function
 %       value for point X(i, :).
 %   nodes is m-by-d matrix of nodes to calculate function values.
@@ -456,7 +624,7 @@ function res = interpol(X, y, nodes, r)
 
     % Calculate variances for all attributes
     smooth = -1 / (r * mean(var(X)));
-    % Calculate distances from each node to each datapoint
+    % Calculate distances from each node to each data point
     dist = bsxfun(@plus, sum(X.^2,2), sum(nodes.^2, 2)') - 2 * (X * nodes');
     % Calclulate RBF in each point
     tmp = bsxfun(@times, exp(dist * smooth), y);
@@ -485,7 +653,7 @@ function [grid, maps, inter] = formGrid(grid, maps, inter)
     siz = size(ind);
     indL = sub2ind(siz, edges(:, 1), edges(:, 2));
     ind(indL) = nN + 1:nN + nE;
-    % Step 3. form list of six nodes for each face
+    % Step 3. Form list of six nodes for each face
     face = [grid, ind(sub2ind(siz, grid(:, 1), grid(:, 2))),...
         ind(sub2ind(siz, grid(:, 2), grid(:, 3))),...
         ind(sub2ind(siz, grid(:, 1), grid(:, 3)))];

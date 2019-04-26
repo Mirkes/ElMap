@@ -2,7 +2,7 @@ function drawPieChart(x, y, radius, Proportions, Colors)
 %drawPieChart draw one pie chart with specified properties:
 %   x and y are coordinates of centre of circle
 %   radius is radius of circle
-%   Proportions ia vector of couns of casses for each color
+%   Proportions is vector of counts of cases for each color
 %   Colors is vector of colors
 
     % Transform counts to proportions

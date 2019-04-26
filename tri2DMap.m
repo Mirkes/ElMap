@@ -10,29 +10,29 @@ classdef tri2DMap < MapGeometry
     
     methods
         function map = tri2DMap(rows, cols)
-            %Create map
+            % Create map
             map@MapGeometry(2);
             % Store size
             map.sizes = [rows, cols];
-            %Calculate internal coordinates of nodes
+            % Calculate internal coordinates of nodes
             vstep = sqrt(3)/2;
-            %Calculate number of odd and even rows
+            % Calculate number of odd and even rows
             odd = round(rows/2 +0.001);
             even = rows - odd;
             N = odd*cols+even*(cols-1);
-            %Calculate internal node coordinates.
-            %X coordinates for two rows
+            % Calculate internal node coordinates.
+            % X coordinates for two rows
             a1 = repmat([(1:cols)'; (1:cols-1)'+0.5],even,1);
             a2 = repmat([zeros(cols,1); repmat(vstep,cols-1,1)],1,even);
             a3 = (0:even-1)*(2*vstep);
             a2 = bsxfun(@plus,a2,a3);
             map.internal = [a1, a2(:)];
             if odd>even
-                %add last row
+                % Add last row
                 map.internal = [map.internal; (1:cols)', repmat(even*2*vstep,cols,1)];
             end
-            %form array of links and ribs
-            %horizontal edges
+            % Form array of links and ribs
+            % Horizontal edges
             b = 2*cols-1;
             a1 = repmat((1:cols)',1,odd);
             a3 = (0:odd-1)*b;
@@ -55,7 +55,7 @@ classdef tri2DMap < MapGeometry
             B2 = a1(2:end-1,:);
             B3 = a1(3:end,:);
             map.ribs = [map.ribs; B1(:), B2(:), B3(:)];
-            %form faces
+            % Form faces
             a3 = [reshape(a2(1:end-1,:),[],1);reshape(a1(1:end-1,:),[],1)];
             B1 = [a3, a3+1, a3+cols];
             ind = B1(:,2)<=N & B1(:,3)<=N;
@@ -63,7 +63,7 @@ classdef tri2DMap < MapGeometry
             B2 = [a3,a3+cols,a3+(cols-1)];
             ind2 = B2(:,2)<=N & B2(:,3)<=N;
             map.faces = [B1(ind,:); B2(ind2,:)];
-            %Left to right and up edges
+            % Left to right and up edges
             a3 = [reshape(a2(1:end-1,:),[],1);a1(:)];
             B1 = [a3,a3+cols];
             ind = B1(:,2)<=N;
@@ -72,7 +72,7 @@ classdef tri2DMap < MapGeometry
             B1 = [a3,a3+cols,a3+2*cols];
             ind = B1(:,3)<=N;
             map.ribs = [map.ribs;B1(ind,:)];
-            %Right to left up edges
+            % Right to left up edges
             a3 = [reshape(a2(2:end,:),[],1);a1(:)];
             B1 = [a3,a3+(cols-1)];
             ind = B1(:,2)<=N;
@@ -81,15 +81,15 @@ classdef tri2DMap < MapGeometry
             B1 = [a3,a3+(cols-1),a3+2*(cols-1)];
             ind = B1(:,3)<=N;
             map.ribs = [map.ribs;B1(ind,:)];
-            %Set mappedcoordinates to empty set
+            % Set mapped coordinates to empty set
             map.mapped = [];
         end
         
         function face = getFaces(map)
-            %method to access to the feces of map
+            %Function to access to the feces of map
             %face is k-by-3 matrix. Each row contains three numbers of
             %nodes which form one face.
-            face=map.faces;
+            face = map.faces;
         end
     
         function newMap = extendPrim(map)
@@ -98,11 +98,7 @@ classdef tri2DMap < MapGeometry
             col = map.sizes(2);
             rowN = row + 2;
             colN = col + 1;
-            % Calculate specific geometric information for old and new maps
-            odd = round(row / 2 + 0.001);
-            even = row - odd;
-            nm = odd * col + even * (col - 1);
-            % The same for new map
+            % Calculate specific geometric information for new maps
             oddN = round(rowN / 2 + 0.001);
             evenN = rowN - oddN;
             NM = oddN * colN + evenN * (colN - 1);
@@ -164,7 +160,7 @@ classdef tri2DMap < MapGeometry
             res = [1:col,...                    % Bottom row
                 N - col + 2 + even - odd:N,...  % Top row
                 (1:od) * (2 * col - 1) + 1,...  % Left column
-                (1:od) * (2 * col - 1) + col];    % Right column
+                (1:od) * (2 * col - 1) + col];  % Right column
         end
     end
 end

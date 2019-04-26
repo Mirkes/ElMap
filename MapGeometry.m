@@ -1,7 +1,7 @@
 classdef MapGeometry  < handle
     %MapGeometry is class of map geometry for the elastic map and
     %self-organised map.
-    %   MapGeometry contains description of underlied map.
+    %   MapGeometry contains description of underlying map.
     
     properties (SetAccess = protected)
         sizes       % size of map is map dependent
@@ -14,8 +14,9 @@ classdef MapGeometry  < handle
                     % nodes which form this rib.
         disp        % dispersion measure for PQSQ approach
         preproc     % true if data were preprocessed
-        means       % empty if preproc is false and mean of data otherwise.
-        PCs         % empty if preproc is false and set of PCs otherwise.
+        means       % mean of data otherwise.
+        PCs         % set of PCs otherwise. Number of PCs can be specified 
+                    % in the call of Init function. 
     end
     
     methods
@@ -26,63 +27,70 @@ classdef MapGeometry  < handle
         end
         
         function dim = getDimension(map)
-            %method to get map dimension.
+            % Function to get map dimension.
             dim = map.dimension;
         end
         
         function coord = getInternalCoordinates(map)
-            %method to access the internal coordinates of map
+            % Function to access the internal coordinates of map
             coord = map.internal;
         end
         
         function coord = getMappedCoordinates(map)
-            %method to access the mapped coordinates of map
+            % Function to access the mapped coordinates of map
             coord = map.mapped;
         end
         
         function links = getLinks(map)
-            %method to access edges of map
-            %links is k-by-2 matrix. Each row contains two numbers of nodes 
-            %which form one edge.
+            % Function to access edges of map. 
+            % links is k-by-2 matrix. Each row contains two numbers of
+            % nodes which form one edge.
             links = map.links;
         end
         
         function ribs = getRibs(map)
-            %method to access ribs of map
-            %ribs is k-by-3 matrix. Each row contains three numbers of 
-            %nodes which form this rib.
+            % Function to access ribs of map
+            % ribs is k-by-3 matrix. Each row contains three numbers of 
+            % nodes which form this rib.
             ribs = map.ribs;
         end
         
         function disp = getDisp(map)
-            %method to access disp of map
-            %disp is non-negative number which presents the maximal
-            %distance from data point to nearest original node.
+            % Function to access disp of map
+            % disp is non-negative number which presents the maximal
+            % distance from data point to nearest original node.
             disp = map.disp;
         end
         
         function init(map, data, type, reduce)
-        %init is the method of map initialization. This method defines an 
-        %initial mapped coordinates. In accordance of results of paper
-        %[Akinduko, Ayodeji A., Evgeny M. Mirkes, and Alexander N. Gorban.
-        %"SOM: Stochastic initialization versus principal components."
-        %Information Sciences(2015),
-        %http://dx.doi.org/10.1016/j.ins.2015.10.013] three methods have to
-        %be implemented by each map: random initialization, random
-        %selection and principal component initialization.
+        % init is the  function of map initialization. This  function
+        % defines an initial mapped coordinates. In accordance of results
+        % of paper [Akinduko, Ayodeji A., Evgeny M. Mirkes, and Alexander
+        % N. Gorban. "SOM: Stochastic initialization versus principal
+        % components." Information Sciences(2015), 
+        % http://dx.doi.org/10.1016/j.ins.2015.10.013] three methods have
+        % to be implemented by each map: random initialization, random
+        % selection and principal component initialization.
         %
         %Inputs:
         %   map is MapGeometry object to initialise map.
         %   data is n-by-m matrix with n data points and m coordinates for
         %       each point (each row is one data point)
-        %   type is the type of initialization: 'random', 'randomSelection'
-        %       or 'pci'. Default value 'pci'.
+        %   type is the type of initialization:
+        %           'random' is random generation
+        %           'randomSelection' is random selection of data points as
+        %               initial nodes location
+        %           'pci' is initialisation along the first or first two
+        %           PCs
+        %        Default value 'pci'.
         %   reduce is nonnegative integer. If 'reduce' is positive and is
-        %       less than n then specifien number of the first principal
-        %       components is used. If 'reduce' is zero and m>n then the
+        %       less than n then specified number of the first principal
+        %       components are used. If 'reduce' is zero and m>n then the
         %       first n-1 principal components is used. If 'reduce' is
         %       positive and is greater or equal to n or 'reduce' is zero
-        %       and n>m then dimensionality reduction nis not performed.
+        %       and n>m then dimensionality reduction is not performed. If
+        %       reduce is negative then -reduce PCs are calculated but
+        %       dimensionality reduction is not performed.
         %       
             if nargin < 2
                 error('Input argument "data" MUST be specified');
@@ -158,13 +166,15 @@ classdef MapGeometry  < handle
         %   map is MapGeometry object to initialise map.
         %   data is n-by-m matrix with n data points and m coordinates for
         %       each point (each row is one data point)
-        %   reduce is nonnegative integer. If 'reduce' is positive and is
-        %       less than n then specifien number of the first principal
-        %       components is used. If 'reduce' is zero and m>n then the
+        %   reduce is integer. If 'reduce' is positive and is
+        %       less than n then specified number of the first principal
+        %       components are used. If 'reduce' is zero and m>n then the
         %       first n-1 principal components is used. If 'reduce' is
         %       positive and is greater or equal to n or 'reduce' is zero
-        %       and n>m then dimensionality reduction nis not performed.
-        %
+        %       and n>m then dimensionality reduction is not performed. If
+        %       reduce is negative then -reduce PCs are calculated but
+        %       dimensionality reduction is not performed.
+
             % Get sizes
             [n, m] = size(data);
             reduce = floor(reduce);
@@ -175,8 +185,14 @@ classdef MapGeometry  < handle
                     k = m;
                 end
                 map.preproc = false;
+            elseif reduce < 0
+                k = -reduce;
+                if k > m
+                    k = m;
+                end
+                map.preproc = false;
             else
-                % Define required number of coordinates
+                % Define required number of PCs
                 k = n - 1;
                 if reduce > 0 && reduce > k
                     k = reduce;
@@ -209,8 +225,15 @@ classdef MapGeometry  < handle
             data = bsxfun(@minus, data, map.means) * map.PCs;
         end
         
+        function data = deprocessData(map, data)
+            if ~map.preproc
+                return;
+            end
+            data = bsxfun(@plus, data  * map.PCs', map.means);
+        end
+        
         function coord = project(map, points, type, kind)
-        %Project is the method to calculate projection of data point
+        %Project is the function to calculate projection of data point
         %(points) into map. There are d+1 types of projection for d
         %dimensional map: 0 means projection into nearest node of map, 1
         %means projection onto nearest edge of map, 2 means projection onto
@@ -219,17 +242,20 @@ classdef MapGeometry  < handle
         %method: set of point to project, type of projection (integer
         %number) and coordinates space for projection: ‘internal’ or
         %‘mapped’.
-        %points is n-by-m matrix where m is number of mapped coordinates
-        %   and n is number of points to project.
-        %type is type of projection: 0 or 1 for 1D maps, 0,1 or 2 for 2D
-        %   maps.
-        %kind is one of words 'internal' for internal coordinates and
-        %   'mapped'for mapped coordinates.
+        %
+        %Inputs:
+        %   map is MapGeometry object to use
+        %   points is n-by-m matrix where m is number of mapped coordinates
+        %       and n is number of points to project.
+        %   type is type of projection: 0 or 1 for 1D maps, 0,1 or 2 for 2D
+        %       maps.
+        %   kind is one of words 'internal' for internal coordinates and
+        %       'mapped'for mapped coordinates.
             coord = projectPrime(map, map.mapped, points, type, kind);
         end
         
         function [coord, dist] = projectPrime(map, nodes, points, type, kind)
-        %Project is the method to calculate projection of data point
+        %projectPrime is the function to calculate projection of data point
         %(points) into map. There are d+1 types of projection for d
         %dimensional map: 0 means projection into nearest node of map, 1
         %means projection onto nearest edge of map, 2 means projection onto
@@ -238,17 +264,22 @@ classdef MapGeometry  < handle
         %method: set of point to project, type of projection (integer
         %number) and coordinates space for projection: ‘internal’ or
         %‘mapped’.
-        %coord is the set of requested projections.
-        %dist is the vector of distances from points to map.
-        %nodes is the current state of the mapped nodes. It can be diffed
-        %   from map.mapped. It is useful for estimation of calculated
-        %   mapped nodes without fixing it into map object
-        %points is n-by-m matrix where m is number of mapped coordinates
-        %   and n is number of points to project.
-        %type is type of projection: 0 or 1 for 1D maps, 0,1 or 2 for 2D
-        %   maps.
-        %kind is one of words 'internal' for internal coordinates and
-        %   'mapped'for mapped coordinates.
+        %
+        %Inputs:
+        %   map is MapGeometry object to use
+        %   nodes is the current state of the mapped nodes. It can be
+        %       diffed from map.mapped. It is useful for estimation of
+        %       calculated mapped nodes without fixing it into map object
+        %   points is n-by-m matrix where m is number of mapped coordinates
+        %       and n is number of points to project.
+        %   type is type of projection: 0 or 1 for 1D maps, 0,1 or 2 for 2D
+        %       maps.
+        %   kind is one of words 'internal' for internal coordinates and
+        %       'mapped'for mapped coordinates.
+        %
+        %Outputs:
+        %   coord is the set of requested projections.
+        %   dist is the vector of distances from points to map.
         
             %Check which type of coordinates is necessary to return
             cType = strcmpi('mapped',kind);
@@ -377,20 +408,23 @@ classdef MapGeometry  < handle
         %associate identify the nearest node for each data point and
         %return the squared distance between selected node and data
         %point and number of nearest node.
+        %
         %Inputs:
         %   node is n-by-k matrix of mapped coordinates for tested state
         %       of map, where n is number of nodes and m is dimension of
         %       data space.
         %   data is m-by-k data points to test, where m is number of
         %       points and k is dimension of data space.
+        %
         %Outputs:
         %   dist is m-by-1 matrix of squared distances from data point to
         %       nearest node
         %   klass is m-by-1 vector which contains number of nearest node
         %       for each data point.
             
-            dist=bsxfun(@plus,sum(data.^2,2),sum(node.^2,2)')-2*(data*node');
-            [dist, klas] = min(dist,[],2);
+            dist = bsxfun(@plus, sum(data .^ 2, 2),...
+                sum(node .^2, 2)') - 2 * (data * node');
+            [dist, klas] = min(dist, [], 2);
         end
         
         function newMap = extend(map, val, data)
@@ -412,7 +446,7 @@ classdef MapGeometry  < handle
             if nargin < 2
                 val = 1;
             elseif val < 0
-                error(['Value of val atrribute must be positive value',...
+                error(['Value of val attribute must be positive value',...
                     ' between 0 and 1 for fraction restriction or',...
                     ' positive integer to add val ribbons to each',...
                     ' side of map']);
@@ -420,7 +454,7 @@ classdef MapGeometry  < handle
             if val < 1
                 % Restriction for fraction of border cases
                 if nargin < 3
-                    error('To use 0<val<1 data argument must be specified');
+                    error('To use 0 < val < 1 data argument must be specified');
                 end
                 dat = map.preprocessData(data);
                 newMap = map;
@@ -439,13 +473,16 @@ classdef MapGeometry  < handle
         function fvu = FVU(map, data, node, type)
         %Calculate fraction of variance unexplained for specified data and
         %nodes.
-        %data is set of data points
-        %node is the set of considered mapped nodes. If t is ommited or
-        %   empty then the map.mapped is used.
-        %type is the type of projection: 0 means projection into nearest
-        %   node of map, 1 means projection onto nearest edge of map, 2
-        %   means projection onto nearest face of map. If this argument is
-        %   omitted then 1 is used.
+        %
+        %Inputs:
+        %   map is MapGeometry object to use
+        %   data is set of data points
+        %   node is the set of considered mapped nodes. If t is omitted or
+        %       empty then the map.mapped is used.
+        %   type is the type of projection: 0 means projection into nearest
+        %       node of map, 1 means projection onto nearest edge of map, 2
+        %       means projection onto nearest face of map. If this argument
+        %       is omitted then 1 is used.
         
             %Check the input attributes
             if nargin < 4
@@ -468,8 +505,10 @@ classdef MapGeometry  < handle
         end
         
         function putMapped(map, newMapped)
-            %This method is used for the putting the fitted mapped
+            %This function is used for the putting the fitted mapped
             %coordinates of map.
+            %
+            %Inputs:
             %   newMapped is new matrix of mapped coordinates. It must have
             %       the same size as previously defined matrix
             if ~all(size(map.mapped)==size(newMapped))
@@ -500,10 +539,6 @@ classdef MapGeometry  < handle
         
     
     methods (Abstract)
-%         %Distance is method to calculate distances between two nodes in the
-%         %internal coordinates. This method is useful for SOM fitting
-%         %procedure.
-%         dist = distance(map,nodes)
         % Primitive extension of map - addition of one ribbon of nodes to
         % map in each direction
         newMap = extendPrim(map)
