@@ -118,21 +118,23 @@ classdef MapGeometry  < handle
             elseif strcmpi('randomSelection',type)
                 %Random selection
                 %Generate vector of prototypes numbers
-                data = randi(size(data,1),size(map.internal,1),1);
+                data_ind = randi(size(data,1),size(map.internal,1),1);
                 %Get selected points and put as mapped coordinates
-                map.mapped = data(data,:);
+                map.mapped = data(data_ind,:);
             elseif strcmp('pci',type)
                 % Principal component initialization
                 % Get mean and PCs
+  	        intrinsic_dim = map.dimension;
+		embedding_dim = size(map.internal,2);
                 if map.preproc
                     % Data were preprocessed
-                    V = eye(size(data, 2), map.dimension);
-                    tmp = data(:, 1:map.dimension);
+                    V = eye(size(data, 2), embedding_dim);
+                    tmp = data(:, 1:embedding_dim);
                     meanDat = zeros(1, size(data, 2));
                 else
                     % Get requared number of PCs:
                     meanDat = map.means;
-                    V = map.PCs(:, 1:map.dimension);
+                    V = map.PCs(:, 1:embedding_dim);
                     tmp = data * V;
                 end
                 

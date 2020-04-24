@@ -1,4 +1,4 @@
-what = 19;
+%what = 16;
 
 % What is parameter to select test
 % 0 - generate data for test
