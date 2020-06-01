@@ -83,7 +83,7 @@ classdef MapGeometry  < handle
         %           'pci' is initialisation along the first or first two
         %           PCs
         %        Default value 'pci'.
-        %   reduce is nonnegative integer. If 'reduce' is positive and is
+        %   reduce is nonzero integer. If 'reduce' is positive and is
         %       less than n then specified number of the first principal
         %       components are used. If 'reduce' is zero and m>n then the
         %       first n-1 principal components is used. If 'reduce' is

@@ -10,7 +10,7 @@ function EM(map, data, varargin)
 %       m coordinates of one data point.
 %   Name can be one of the following:
 %       'type' is one of the following strings:
-%          'hard' is hard map with stretch = 1 and bend = 1
+%           'hard' is hard map with stretch = 1 and bend = 1
 %           'medium' is more flexible map with stretch = 0.7 and bend = 0.7
 %           'soft' is soft map with stretch = 0.5 and bend = 0.5
 %           If 'type', 'stretch' and 'bending' are omitted then 'medium' is

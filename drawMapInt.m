@@ -25,6 +25,8 @@ function drawMapInt( map, data, projType, varargin )
 %       2 is projection to the nearest face.
 %       default value is 0.
 %   There are several additional parameters in form 'Name', value:
+%       'drawData' is boolean with value true (default) to draw data and
+%           value false to do not draw data.
 %       'classes' is n-by-1 vector of class labels for points. Each label
 %           is positive integer number which is the index of cell array
 %           with marker descriptions. Marker descriptions can be specified
@@ -152,9 +154,12 @@ function drawMapInt( map, data, projType, varargin )
     lineWidthSpecified = false;
     smooth = 0.15;
     graph = [];
+    drawData = true;
     % Parse optional parameters
     for i=1:2:length(varargin)
         switch lower(varargin{i})
+            case 'drawdata'
+                drawData = varargin{i + 1};
             case 'classes'
                 classes = varargin{i + 1};
             case 'markcolour'
@@ -600,7 +605,7 @@ function drawMapInt( map, data, projType, varargin )
                         [f(links(:,1),1)';f(links(:,2),1)'],...
                         nodeColour, 'LineWidth', lineWidth);
                 end
-                data = [];
+                drawData = false;
             end
             colormap(gca, colMap);
         else
@@ -612,7 +617,7 @@ function drawMapInt( map, data, projType, varargin )
         hold on;
         %Project data to map
         if projType == 0 && mapDraw
-            if ~isempty(data)
+            if drawData
                 %Search unique points
                 [dat, ~, ic] = unique(data,'rows');
                 count = accumarray(ic, 1);
@@ -652,7 +657,7 @@ function drawMapInt( map, data, projType, varargin )
             end
 
             %Draw data points
-            if ~isempty(data)
+            if drawData
                 for k = 1:nCls
                     ind = classes == cls(k);
                     plot(data(ind, 1), data(ind, 2),...
@@ -673,7 +678,7 @@ function drawMapInt( map, data, projType, varargin )
         %Draw edges
         plot(X, Y, nodeColour, 'LineWidth', lineWidth);
         if projType == 0
-            if ~isempty(data)
+            if drawData
                 %Search unique points
                 [dat, ~, ic] = unique(data,'rows');
                 count = accumarray(ic,1);
@@ -726,7 +731,7 @@ function drawMapInt( map, data, projType, varargin )
                 nodeColour, 'MarkerSize', nodeMarkerSize,...
                 'LineStyle', 'none');
             %Draw data points
-            if ~isempty(data)
+            if drawData
                 for k = 1:nCls
                     ind = classes == cls(k);
                     plot(data(ind, 1), 0,...
