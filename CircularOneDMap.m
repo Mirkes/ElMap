@@ -1,6 +1,7 @@
 classdef CircularOneDMap < MapGeometry
-    %OneDMap is descendant for piecewise linear map
-    %   Constructor contains one argument which is number of nodes
+    %CircularOneDMap is 1D map with circular shape: the last node is
+    %   predessor of the first node. Constructor contains one argument
+    %   which is number of nodes.
     
     methods
         function map = CircularOneDMap(N)

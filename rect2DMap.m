@@ -1,5 +1,5 @@
 classdef rect2DMap < MapGeometry
-    %OneDMap is descendant for piecewise linear map
+    %OneDMap is 2D rectangular map.
     %   Constructor contains two argument which are number of rows and
     %   number of columns
     

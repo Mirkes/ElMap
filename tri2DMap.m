@@ -1,5 +1,5 @@
 classdef tri2DMap < MapGeometry
-    %OneDMap is descendant for piecewise linear map
+    %OneDMap is triangular 2D map
     %   Constructor contains two argument which are number of rows and
     %   number of columns. Each odd row contains cols nodes and each even
     %   row contains cols-1 nodes.
