@@ -80,8 +80,25 @@ classdef MapGeometry  < handle
         %           'random' is random generation
         %           'randomSelection' is random selection of data points as
         %               initial nodes location
-        %           'pci' is initialisation along the first or first two
-        %           PCs
+        %           'pci' is initialisation along the first, first two or
+        %               first three PCs.
+        %           vector with 1, 2 or 3 nonzero elements. These positive
+        %               elements are numbers of used coordinates. For
+        %               example, vector [2, 1] means usage of the second
+        %               coordinate as first dimension and the first
+        %               coordinate as the second dimension. Negative
+        %               elements are numbers of used PCs. For example,
+        %               vector [-1, -2] means usage of the first and the
+        %               second PCs and coincides with default 'pci'
+        %               initialisation. The number of required elements 
+        %               depends of map dimension: 1 for 1D map, 2 for 2D
+        %               map. For circular 1D map it is necessary to specify
+        %               2 vectors. It is possible to combine positive and
+        %               negative components.
+        %           matrix with 1, 2 or 3 columns and with the same number
+        %               of rows as number of columns in data. Each column
+        %               vector of the matrix is cinsidered as direction of
+        %               corresponding axis for map initialisation. 
         %        Default value 'pci'.
         %   reduce is nonzero integer. If 'reduce' is positive and is
         %       less than n then specified number of the first principal
@@ -102,6 +119,7 @@ classdef MapGeometry  < handle
                 reduce = 0;
             end
             
+            reserve = data;
             data = map.preprocessDataInit(data, reduce);
             
             if strcmpi('random', type)
@@ -121,23 +139,130 @@ classdef MapGeometry  < handle
                 data_ind = randi(size(data,1),size(map.internal,1),1);
                 %Get selected points and put as mapped coordinates
                 map.mapped = data(data_ind,:);
-            elseif strcmp('pci',type)
-                % Principal component initialization
-                % Get mean and PCs
-  	        intrinsic_dim = map.dimension;
-		embedding_dim = size(map.internal,2);
-                if map.preproc
-                    % Data were preprocessed
-                    V = eye(size(data, 2), embedding_dim);
-                    tmp = data(:, 1:embedding_dim);
-                    meanDat = zeros(1, size(data, 2));
+            elseif strcmp('pci',type) || isvector(type) || ismatrix(type)
+                % Customised initialisation 
+                embedding_dim = size(map.internal,2);
+                % Form processed data matrix and vector of shift
+                if strcmp('pci',type)
+                    %Principal component initialization
+                    % Get mean and PCs
+                    if map.preproc
+                        % Data were preprocessed
+                        V = eye(size(data, 2), embedding_dim);
+                        tmp = data(:, 1:embedding_dim);
+                        meanDat = zeros(1, size(data, 2));
+                    else
+                        % Get requared number of PCs:
+                        meanDat = map.means;
+                        V = map.PCs(:, 1:embedding_dim);
+                        tmp = data * V;
+                    end
+                elseif isvector(type)
+                    if sum(type == 0) > 0
+                        error('All elements of vector type must be nonzero');
+                    end
+                    % Vector of coordinates or PCs
+                    if length(type) < embedding_dim
+                        error(['Argumrnt type is vector with ',...
+                            num2str(length(type)), ' elements, but for ',...
+                            'this map ',num2str(embedding_dim),...
+                            ' is necessary']);
+                    end
+                    % Are coordinates necessary?
+                    nCo = max(type);
+                    if nCo > 0
+                        if map.preproc
+                            error(['It is impossible to use coordinate ',...
+                                'vectors for preprocessed data.',...
+                                'Data preprocessing is producing if ',...
+                                'positive "reduce" is specified or ',...
+                                'if "reduce" is zero and the number of ',...
+                                'attributes is greater than number of ',...
+                                'observations.']);
+                        end
+                        if nCo > size(reserve, 2)
+                            error(['The maximal number of requested ',...
+                                'coordinate ', num2str(nCo),... 
+                                ' is greater then the number',...
+                                ' of coordinatess ',...
+                                num2str(size(reserve, 2)),...
+                                '. Initialisation is not possible.']);
+                        end
+                        % Get auxiliary arrays
+                        DV = eye(size(reserve, 2), nCo);
+                        meanDat = mean(reserve);
+                        Dtmp = reserve;
+                    end
+                    % Check the PCs necessity
+                    nPCs = -min(type);
+                    if nPCs > 0
+                        if nPCs > size(map.PCs, 2)
+                            error(['The maximal number of requested PC ',...
+                                num2str(nPCs),... 
+                                ' is greater then the number',...
+                                ' of calculated PCs ',...
+                                num2str(size(map.PCs, 2)),...
+                                '. Initialisation is not possible.']);
+                        end
+                        % Get auxiliary arrays
+                        if map.preproc
+                            % Data were preprocessed
+                            PV = eye(size(data, 2), nPCs);
+                            Ptmp = data(:, 1:embedding_dim);
+                            meanDat = zeros(1, size(data, 2));
+                        else
+                            % Get requared number of PCs:
+                            meanDat = map.means;
+                            PV = map.PCs(:, 1:nPCs);
+                            Ptmp = data * PV;
+                        end
+                    end
+                    % Create and complete required matrices
+                    tmp = zeros(size(data, 1), embedding_dim);
+                    V = zeros(size(data, 2), embedding_dim);
+                    for k = 1:embedding_dim
+                        if type(k) > 0
+                            % Coordinate
+                            tmp(:, k) = reserve(:, type(k));
+                            V(:, k) = DV(:, type(k));
+                        else
+                            % PC
+                            tmp(:, k) = Ptmp(:, -type(k));
+                            V(:, k) = PV(:, -type(k));
+                        end
+                    end
                 else
-                    % Get requared number of PCs:
-                    meanDat = map.means;
-                    V = map.PCs(:, 1:embedding_dim);
-                    tmp = data * V;
+                    % Matrix. Each column vector is axis vector. 
+                    if size(type, 2) < embedding_dim
+                        error(['Current map required ',...
+                            num2str(embedding_dim),...
+                            ' vectors but only ',...
+                            num2str(size(type, 2)),...
+                            ' were presented. Initialisation ',...
+                            'is not possible.']);
+                    end
+                    if size(type, 1) ~= size(reserve, 2)
+                        error(['For ', num2str(size(reserve, 2)),...
+                            '-dimensional data matrix type must have ',...
+                            num2str(size(reserve, 2)),...
+                            'elements instead of presented ',...
+                            num2str(size(type, 1)),...
+                            '. Initialisation is not possible.']);
+                    end
+                    % Calculate othonormal basis for presented vectors
+                    V = type(:, 1:embedding_dim);
+                    for k = 1:embedding_dim
+                        % Normalise current vector
+                        V(:, k) = V(:, k) / sqrt(sum(V(:, k) .^ 2));
+                        % Subtract from the further vectors
+                        for kk = k + 1:embedding_dim
+                            V(:, kk) = V(:,kk) - (V(:, k)' * V(:,kk)) .* V(:, k);
+                        end
+                    end
+                    % Calculate mean and projections
+                    meanDat = mean(reserve);
+                    tmp = reserve * V;
                 end
-                
                 %Calculate mean and dispersion along each PCs
                 mini = min(tmp);
                 maxi = max(tmp);
@@ -154,7 +279,8 @@ classdef MapGeometry  < handle
                 map.mapped=bsxfun(@plus,...
                     bsxfun(@minus, map.internal, meanI) * V', meanDat);
             else
-                error(['type "' type '" is not recognized as valid type of initialization']);
+                error(['type "' type '" is not recognized as valid type',...
+                    ' of initialization']);
             end
             data = associate(map, map.mapped, data);
             map.disp = sqrt(max(data));
