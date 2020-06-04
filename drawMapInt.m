@@ -27,6 +27,9 @@ function drawMapInt( map, data, projType, varargin )
 %   There are several additional parameters in form 'Name', value:
 %       'drawData' is boolean with value true (default) to draw data and
 %           value false to do not draw data.
+%       'labels' is n-by-1 array of data point labels to use as data tip.
+%           Default value is empty and corresponds to x,y,z coordinates of
+%           point.
 %       'classes' is n-by-1 vector of class labels for points. Each label
 %           is positive integer number which is the index of cell array
 %           with marker descriptions. Marker descriptions can be specified
@@ -131,6 +134,12 @@ function drawMapInt( map, data, projType, varargin )
         projType = 0;
     end
     
+    if projType == 2
+        if ~any(strcmp(methods(map), 'getFaces'))
+            error('Map must implement method "getFaces" for projection to face');
+        end
+    end
+    
     % Data preprocessing
     data = map.preprocessData(data);
     % Get number of data points
@@ -155,9 +164,12 @@ function drawMapInt( map, data, projType, varargin )
     smooth = 0.15;
     graph = [];
     drawData = true;
+    labels = [];
     % Parse optional parameters
     for i=1:2:length(varargin)
         switch lower(varargin{i})
+            case 'labels'
+                labels = varargin{i + 1};
             case 'drawdata'
                 drawData = varargin{i + 1};
             case 'classes'
@@ -199,6 +211,19 @@ function drawMapInt( map, data, projType, varargin )
     end
 
     % Sanity check of arguments.
+    if isempty(labels) || ~drawData
+        dataTips = false;
+    else
+        tmp = size(labels);
+        if isa(labels,'cell') || (tmp(1) == 1 && tmp(2) ~= N)...
+                              || (tmp(2) == 1 && tmp(1) ~= N)
+            error(['Argument "labels" must be one dimensional cell array',...
+                ' with the same number of elements as number of rows in',...
+                ' data. Eact cell must contains one string or char array.']);
+        end
+        dataTips = true;
+    end
+        
     if isempty(classes)
         classes = ones(N, 1);
         cls = 1;
@@ -645,6 +670,12 @@ function drawMapInt( map, data, projType, varargin )
                         end
                     end
                 end
+                %Add dataTips if required
+                if dataTips
+                    dcm = datacursormode;
+                    dcm.UpdateFcn = @(~, info) dataTipCreator(info, data, labels);
+                    dcm.updateDataCursors;                    
+                end
             end
             axis(lims);
         else
@@ -665,6 +696,12 @@ function drawMapInt( map, data, projType, varargin )
                         'MarkerFaceColor', markColour(k),...
                         'MarkerSize', markSize(k));
                     hold on
+                end
+                %Add dataTips if required
+                if dataTips
+                    dcm = datacursormode;
+                    dcm.UpdateFcn = @(~, info) dataTipCreator(info, data, labels);
+                    dcm.updateDataCursors;
                 end
             end
         end
@@ -723,6 +760,12 @@ function drawMapInt( map, data, projType, varargin )
                     mins = maxs;
                 end
                 f = f * mins;
+                %Add dataTips if required
+                if dataTips
+                    dcm = datacursormode;
+                    dcm.UpdateFcn = @(~, info) dataTipCreator(info, data, labels);
+                    dcm.updateDataCursors;
+                end
             end
         else
             %Draw maps nodes
@@ -738,6 +781,12 @@ function drawMapInt( map, data, projType, varargin )
                         [markColour(k), markShape(k)],...
                         'MarkerFaceColor', markColour(k),...
                         'MarkerSize', markSize(k));
+                end
+                %Add dataTips if required
+                if dataTips
+                    dcm = datacursormode;
+                    dcm.UpdateFcn = @(~, info) dataTipCreator(info, data, labels);
+                    dcm.updateDataCursors;
                 end
             end
         end
@@ -848,4 +897,16 @@ function res = interpolGraph(X, y, nodes, r)
     % Normalise result
     mins = min(res);
     res = (res - mins) / (max(res) - mins);
+end
+
+function txt = dataTipCreator(info, data, labels)
+% Service function to customise labels of data points.
+    ind = data(:, 1) == info.Position(1);
+    if size(data, 2) > 1
+        ind = ind | (data(:,2) == info.Position(2));
+    end
+    if size(data, 2) > 2
+        ind = ind | (data(:,3) == info.Position(3));
+    end
+    txt = labels(ind);
 end

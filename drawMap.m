@@ -529,6 +529,7 @@ function drawMap(map, data, varargin)
             if dataTips
                 dcm = datacursormode;
                 dcm.UpdateFcn = @(~, info) dataTipCreator(info, data, labels);
+                dcm.updateDataCursors;
             end
         end
         if mapDraw
@@ -583,6 +584,7 @@ function drawMap(map, data, varargin)
             if dataTips
                 dcm = datacursormode;
                 dcm.UpdateFcn = @(~, info) dataTipCreator(info, data, labels);
+                dcm.updateDataCursors;
             end
         end
         if mapDraw
@@ -616,6 +618,7 @@ function drawMap(map, data, varargin)
             if dataTips
                 dcm = datacursormode;
                 dcm.UpdateFcn = @(~, info) dataTipCreator(info, data, labels);
+                dcm.updateDataCursors;
             end
         end
         if mapDraw
@@ -648,6 +651,7 @@ function drawMap(map, data, varargin)
             if dataTips
                 dcm = datacursormode;
                 dcm.UpdateFcn = @(~, info) dataTipCreator(info, data, labels);
+                dcm.updateDataCursors;
             end
         end
         if mapDraw
@@ -720,12 +724,13 @@ function [grid, maps, inter] = formGrid(grid, maps, inter)
 end
 
 function txt = dataTipCreator(info, data, labels)
-    ind = data(:,1) == info.Position(1);
-    if size(data,1) > 1
-        ind = ind + data(:,2) == info.Position(2);
+% Service function to customise labels of data points.
+    ind = data(:, 1) == info.Position(1);
+    if size(data, 2) > 1
+        ind = ind | (data(:,2) == info.Position(2));
     end
-    if size(data,1) > 2
-        ind = ind + data(:,3) == info.Position(3);
+    if size(data, 2) > 2
+        ind = ind | (data(:,3) == info.Position(3));
     end
     txt = labels(ind);
 end
