@@ -549,21 +549,110 @@ function drawMapInt( map, data, projType, varargin )
     if newFigure
         figure;
     end
-    % Get limits of map
-    lims = zeros(1, 4);
-    lims([1, 3]) = min(intern) - 1;
-    lims([2, 4]) = max(intern) + 1;
+
+    % Get map dimension
+    dim = size(intern,2);
+
     % Get map links
     links = map.getLinks;
     
-    % Get map dimension
-    dim = size(intern,2);
     if dim > 3
         
     elseif dim == 3
-        % 3d map
+        if map.dimension == 3
+        % real 3d map
+        
+        % TO BE IMPLEMENTED
+        
+        else
+        % 2d map with 3d representation (e.g., cylinder2DMap or sperical2DMap)
+        	lims = zeros(1, 6);
+        	lims([1, 3, 5]) = min(intern) - 1;
+        	lims([2, 4, 6]) = max(intern) + 1;
+            hold off;
+            X=[intern(links(:,1),1)';intern(links(:,2),1)'];
+            Y=[intern(links(:,1),2)';intern(links(:,2),2)'];
+            Z=[intern(links(:,1),3)';intern(links(:,2),3)'];
+
+        if ~isempty(source)
+            if flatColoring
+                % Create 2D graph and fix it.
+                plot3(intern(:, 1), intern(:, 2), intern(:, 3), '.');
+                hold on;
+                axis square;
+                minn = min(intern);
+                maxx = max(intern);
+                axis([minn(1), maxx(1), minn(2), maxx(2)]);
+                % Now draw surface
+                trisurf(gridReady, nodeInt(:, 1), nodeInt(:, 2),...
+                    nodeInt(:, 3), f, 'FaceColor', 'interp',...
+                    'EdgeColor', 'none');
+                %Draw edges
+                if mapDraw
+                    plot(X, Y, Z, nodeColour, 'LineWidth', lineWidth);
+                end
+            else
+                % Draw surface
+                warning('WARNING: Relief coloring can not be drawn in this case.');
+            end
+            colormap(gca, colMap);
+        else
+            %Draw edges
+            if mapDraw
+                plot3(X, Y, Z, nodeColour, 'LineWidth', lineWidth);
+            end
+        end
+        hold on;
+        if projType == 0 && mapDraw
+            if ~isempty(data)
+                %Search unique points
+                [dat, ~, ic] = unique(data,'rows');
+                count = accumarray(ic, 1);
+                ma = max(count);
+                %Draw map nodes
+                if ~strcmpi(nodeMarker, 'none')
+                    if nCls == 1 % No classes
+                        scatter3(dat(:, 1), dat(:, 2), dat(:, 3), count/ma * 400,...
+                            nodeColour, 'filled', nodeMarker);
+                    else
+                        % Not really applicable
+                    end
+                end
+            end
+            axis(lims);
+        else
+            if mapDraw && ~strcmpi(nodeMarker, 'none')
+                %Draw maps nodes
+                plot3(intern(:,1), intern(:,2), intern(:,3), 'Marker', nodeMarker,...
+                    'MarkerFaceColor', nodeColour, 'MarkerEdgeColor',...
+                    nodeColour, 'MarkerSize', nodeMarkerSize,...
+                    'LineStyle', 'none');
+            end
+
+            %Draw data points
+            if ~isempty(data)
+                for k = 1:nCls
+                    ind = classes == cls(k);
+                    plot3(data(ind, 1), data(ind, 2), data(ind, 3),...
+                        [markColour(k), markShape(k)],...
+                        'MarkerFaceColor', markColour(k),...
+                        'MarkerSize', markSize(k));
+                    hold on
+                end
+            end
+        end
+            
+            
+        end
+        
         
     elseif dim == 2
+
+    	% Get limits of map
+	lims = zeros(1, 4);
+    	lims([1, 3]) = min(intern) - 1;
+    	lims([2, 4]) = max(intern) + 1;
+
         % Two dimensional map
         hold off;
         %Form edges

@@ -7,6 +7,7 @@
 % 3 - Create two arcs with shift of x coordinate
 % 4 - Create fragment of sphere
 % 5 - Create two fragments of sphere with shift
+% 6 - Create cylindric distribution
 
 % 11 - test oneDMap
 % 12 - test rect2DMap
@@ -42,9 +43,21 @@ switch what
         classes = ones(500, 1);
         classes(1:5:500) = classes(1:5:500) + 1;
         save('data3DSurf2.mat', 'data', 'classes', '-v7.3');
+    case 6
+	N = 500;
+	dim1 = 5.5;
+	dim2 = 1;
+	noise = 0.3;
+	for i=1:N
+		angle = rand()*2*pi;
+		data(i,1) = dim2*cos(angle)+rand()*dim2*noise;
+		data(i,2) = dim2*sin(angle)+rand()*dim2*noise;
+		data(i,3) = dim1*rand();	
+	end
+        save('dataCylinder3D.mat', 'data', 'classes', '-v7.3');
     case 11
         map = OneDMap(10);
-        init(map, data, 'pci');
+        init(map, data, 'pci')
 %         drawMap(map, data);
 %         drawMapInt(map, data);
 %         EM(map, data, 'stretch', 0.01, 'bend', 0.1 );

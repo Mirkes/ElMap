@@ -1,0 +1,1 @@
+drawMapInt(mape,x,2,'lineWidth',0,'coloring','density','Smooth',0.05,'markSize',1,'flatColoring',1);
