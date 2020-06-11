@@ -12,12 +12,19 @@ function drawMap(map, data, varargin)
 %   map is object of class MapGeometry (descendant of this class).
 %   data is n-by-dim matrix of data points. Each row is one point.
 %   There are several possible 'Name', value pairs:
+%       'drawData' is boolean with value true (default) to draw data and
+%           value false to do not draw data.
 %       'axes' is array of three different nonzero integer. This argument
 %           can be used for space with more than three coordinates only.
-%           The first number is vector for x axis, the second number is
-%           vector for y axis and the third number is vector for z axis.
-%           Positive number means number of coordinate in original space.
-%           Negative number mean specified principal component.
+%           The first number is coordinate to use as x axis, the second
+%           number is coordinate to use as y axis and the third number is
+%           coordinate to use as z axis. Positive number means number of
+%           coordinate in original space. Negative number mean specified
+%           principal component. By default [-1, -2, -3] the first three
+%           principal components will be used.
+%       'labels' is n-by-1 array of data point labels to use as data tip.
+%           Default value is empty and corresponds to x,y,z coordinates of
+%           point.
 %       'classes' is n-by-1 vector of class labels for points. Each label
 %           is positive integer number which is the index of cell array
 %           with marker descriptions. Marker descriptions can be specified
@@ -118,9 +125,15 @@ function drawMap(map, data, varargin)
     smooth = 0.15;
     projType = 0;
     axeS = [];
+    labels = [];
+    drawData = true;
     
     for i=1:2:length(varargin)
         switch lower(varargin{i})
+            case 'drawdata'
+                drawData = varargin{i + 1};
+            case 'labels'
+                labels = varargin{i + 1};
             case 'axes'
                 axeS = varargin{i + 1};
             case 'classes'
@@ -161,6 +174,19 @@ function drawMap(map, data, varargin)
     end
     
     % Sanity check of arguments.
+    if isempty(labels)
+        dataTips = false;
+    else
+        tmp = size(labels);
+        if isa(labels,'cell') || (tmp(1) == 1 && tmp(2) ~= N)...
+                              || (tmp(2) == 1 && tmp(1) ~= N)
+            error(['Argument "labels" must be one dimensional cell array',...
+                ' with the same number of elements as number of rows in',...
+                ' data. Eact cell must contains one string or char array.']);
+        end
+        dataTips = true;
+    end
+    
     if isempty(classes)
         classes = ones(N, 1);
         cls = 1;
@@ -490,13 +516,21 @@ function drawMap(map, data, varargin)
             end
         end
         %Draw data
-        for k = 1:nCls
-            ind = classes == cls(k);
-            plot3(data(ind, 1), data(ind, 2), data(ind, 3),...
-                [markColour(k), markShape(k)],...
-                'MarkerFaceColor', markColour(k),...
-                'MarkerSize', markSize(k));
-            hold on
+        if drawData
+            for k = 1:nCls
+                ind = classes == cls(k);
+                plot3(data(ind, 1), data(ind, 2), data(ind, 3),...
+                    [markColour(k), markShape(k)],...
+                    'MarkerFaceColor', markColour(k),...
+                    'MarkerSize', markSize(k));
+                hold on
+            end
+            %Add dataTips if required
+            if dataTips
+                dcm = datacursormode;
+                dcm.UpdateFcn = @(~, info) dataTipCreator(info, data, labels);
+                dcm.updateDataCursors;
+            end
         end
         if mapDraw
             %Draw edges
@@ -506,6 +540,7 @@ function drawMap(map, data, varargin)
             Z=[maps(links(:,1), 3)';maps(links(:,2), 3)'];
             %Draw edges
             plot3(X, Y, Z, nodeColour, 'LineWidth', lineWidth);
+            hold on;
             %Draw map nodes
             plot3(maps(:, 1), maps(:, 2), maps(:, 3), 'Marker', nodeMarker,...
                 'MarkerFaceColor', nodeColour, 'MarkerEdgeColor', nodeColour,...
@@ -536,13 +571,21 @@ function drawMap(map, data, varargin)
     elseif dim == 3
         %3d data
         %Draw data
-        for k = 1:nCls
-            ind = classes == cls(k);
-            plot3(data(ind, 1), data(ind, 2), data(ind, 3),...
-                [markColour(k), markShape(k)],...
-                'MarkerFaceColor', markColour(k),...
-                'MarkerSize', markSize(k));
-            hold on
+        if drawData
+            for k = 1:nCls
+                ind = classes == cls(k);
+                plot3(data(ind, 1), data(ind, 2), data(ind, 3),...
+                    [markColour(k), markShape(k)],...
+                    'MarkerFaceColor', markColour(k),...
+                    'MarkerSize', markSize(k));
+                hold on
+            end
+            %Add dataTips if required
+            if dataTips
+                dcm = datacursormode;
+                dcm.UpdateFcn = @(~, info) dataTipCreator(info, data, labels);
+                dcm.updateDataCursors;
+            end
         end
         if mapDraw
             %Draw edges
@@ -552,6 +595,7 @@ function drawMap(map, data, varargin)
             Z=[maps(links(:,1), 3)';maps(links(:,2), 3)'];
             %Draw edges
             plot3(X, Y, Z, nodeColour, 'LineWidth', lineWidth);
+            hold on;
             %Draw map nodes
             plot3(maps(:, 1), maps(:, 2), maps(:, 3), 'Marker', nodeMarker,...
                 'MarkerFaceColor', nodeColour, 'MarkerEdgeColor', nodeColour,...
@@ -561,13 +605,21 @@ function drawMap(map, data, varargin)
     elseif dim == 2
         %two dimensional data
         %Draw data
-        for k = 1:nCls
-            ind = classes == cls(k);
-            plot(data(ind, 1), data(ind, 2),...
-                [markColour(k), markShape(k)],...
-                'MarkerFaceColor', markColour(k),...
-                'MarkerSize', markSize(k));
-            hold on
+        if drawData
+            for k = 1:nCls
+                ind = classes == cls(k);
+                plot(data(ind, 1), data(ind, 2),...
+                    [markColour(k), markShape(k)],...
+                    'MarkerFaceColor', markColour(k),...
+                    'MarkerSize', markSize(k));
+                hold on
+            end
+            %Add dataTips if required
+            if dataTips
+                dcm = datacursormode;
+                dcm.UpdateFcn = @(~, info) dataTipCreator(info, data, labels);
+                dcm.updateDataCursors;
+            end
         end
         if mapDraw
             %Draw edges
@@ -576,6 +628,7 @@ function drawMap(map, data, varargin)
             Y=[maps(links(:,1),2)';maps(links(:,2),2)'];
             %Draw edges
             plot(X, Y, nodeColour, 'LineWidth', lineWidth);
+            hold on;
             %Draw map nodes
             plot(maps(:,1),maps(:,2), 'Marker', nodeMarker,...
                 'MarkerFaceColor', nodeColour, 'MarkerEdgeColor', nodeColour,...
@@ -585,22 +638,30 @@ function drawMap(map, data, varargin)
     else
         %one dimensional data
         %Draw data
-        for k = 1:nCls
-            ind = classes == cls(k);
-            plot(data(ind, 1), 0,...
-                [markColour(k), markShape(k)],...
-                'MarkerFaceColor', markColour(k),...
-                'MarkerSize', markSize(k));
-            hold on
+        if drawData
+            for k = 1:nCls
+                ind = classes == cls(k);
+                plot(data(ind, 1), 0,...
+                    [markColour(k), markShape(k)],...
+                    'MarkerFaceColor', markColour(k),...
+                    'MarkerSize', markSize(k));
+                hold on
+            end
+            %Add dataTips if required
+            if dataTips
+                dcm = datacursormode;
+                dcm.UpdateFcn = @(~, info) dataTipCreator(info, data, labels);
+                dcm.updateDataCursors;
+            end
         end
         if mapDraw
-            
             %Draw edges
             %Prepare arrays
             X=[maps(links(:,1),1)'; maps(links(:,2),1)'];
             Y=zeros(2,size(links,1));
             %Draw edges
             plot(X, Y, nodeColour, 'LineWidth', lineWidth);
+            hold on;
             %Draw map nodes
             plot(maps(:,1),0, 'Marker', nodeMarker,...
                 'MarkerFaceColor', nodeColour, 'MarkerEdgeColor', nodeColour,...
@@ -660,4 +721,16 @@ function [grid, maps, inter] = formGrid(grid, maps, inter)
     % Step 4. Form final list of triangles
     grid = [face(:, [2, 4, 5]); face(:, [1, 4, 6]);...
         face(:, [3, 5, 6]); face(:, [4, 5, 6])];
+end
+
+function txt = dataTipCreator(info, data, labels)
+% Service function to customise labels of data points.
+    ind = data(:, 1) == info.Position(1);
+    if size(data, 2) > 1
+        ind = ind | (data(:,2) == info.Position(2));
+    end
+    if size(data, 2) > 2
+        ind = ind | (data(:,3) == info.Position(3));
+    end
+    txt = labels(ind);
 end

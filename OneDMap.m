@@ -1,5 +1,5 @@
 classdef OneDMap < MapGeometry
-    %OneDMap is descendant for piecewise linear map
+    %OneDMap is 1D piecewise linear map
     %   Constructor contains one argument which is number of nodes
     
     methods
