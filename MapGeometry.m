@@ -410,8 +410,8 @@ classdef MapGeometry  < handle
         %   dist is the vector of distances from points to map.
         
             %Check which type of coordinates is necessary to return
-            cType = strcmpi('mapped',kind);
-            N=size(points,1);
+            cType = strcmpi('mapped', kind);
+            N = size(points, 1);
             
             switch type
                 case 0
@@ -467,65 +467,102 @@ classdef MapGeometry  < handle
                     %Get faces
                     face = map.getFaces;
                     %form auxiliary vectors
-                    Y2 = (nodes(face(:,3),:))';
-                    Y20 = Y2-(nodes(face(:,1),:))';
-                    Y21 = Y2-(nodes(face(:,2),:))';
-                    Y10 = (nodes(face(:,2),:)-nodes(face(:,1),:))';
-                    Y20Y20 = sum(Y20.^2);
-                    Y21Y20 = sum(Y20.*Y21);
-                    Y21Y21 = sum(Y21.^2);
-                    %Calculate projections
-                    A20 = bsxfun(@minus,sum(Y2.*Y20),points*Y20);
-                    A21 = bsxfun(@minus,sum(Y2.*Y21),points*Y21);
-                    A10 = bsxfun(@rdivide,bsxfun(@minus,A20-A21,sum(Y21.*Y10)),sum(Y10.^2));
-                    tmp = Y20Y20.*Y21Y21-Y21Y20.^2;
-                    A0 = bsxfun(@rdivide,bsxfun(@times,A20,Y21Y21)...
-                        -bsxfun(@times,A21,Y21Y20),tmp);
-                    A1 = bsxfun(@rdivide,bsxfun(@times,A21,Y20Y20)...
-                        -bsxfun(@times,A20,Y21Y20),tmp);
-                    A20 = bsxfun(@rdivide,A20,Y20Y20);
-                    A21 = bsxfun(@rdivide,A21,Y21Y21);
-                    %Normalize projections
-                    A20N = A20;
-                    A20N(A20N<0) = 0;
-                    A20N(A20N>1) = 1;
-                    A21N = A21;
-                    A21N(A21N<0) = 0;
-                    A21N(A21N>1) = 1;
-                    A10(A10<0) = 0;
-                    A10(A10>1) = 1;
-                    tmp = A0<0;
-                    A0(tmp) = 0;
-                    A1(tmp) = A21N(tmp);
-                    tmp = A1<0;
-                    A0(tmp) = A20N(tmp);
-                    A1(tmp) = 0;
-                    tmp = (1-(A0+A1))<0;
-                    A0(tmp) = A10(tmp);
-                    A1(tmp) = 1-A10(tmp);
-                    %Calculate distances
-                    dist = bsxfun(@plus,sum(points.^2,2),sum(Y2.^2))-2*points*Y2...
-                        +bsxfun(@times,A0,Y20Y20).*(A0-2*A20)...
-                        +bsxfun(@times,A1,Y21Y21).*(A1-2*A21)...
-                        +2*bsxfun(@times,A0.*A1,Y21Y20);
-                    %Select the nearest face
-                    [dist, tmp] = min(dist,[],2);
-                    %form index to find length of projections
-                    ind = sub2ind([N,size(face,1)],(1:N)',tmp);
+                    Y2 = (nodes(face(:, 3), :))';
+                    Y20 = Y2-(nodes(face(:, 1), :))';
+                    Y21 = Y2-(nodes(face(:, 2), :))';
+                    Y10 = (nodes(face(:, 2), :) - nodes(face(:, 1), :))';
+                    Y2_2 = sum(Y2 .^ 2);
+                    Y2_20 = sum(Y2 .* Y20);
+                    Y2_21 = sum(Y2 .* Y21);
+                    Y2020 = sum(Y20 .^ 2);
+                    Y2120 = sum(Y20 .* Y21);
+                    Y2121 = sum(Y21 .^ 2);
+                    Y2110 = sum(Y21 .* Y10);
+                    Y1010 = sum(Y10 .^ 2);
+                    denom = Y2020.*Y2121-Y2120.^2;
+                    
+                    %Create arrays for results
+                    dist = zeros(N, 1);
                     if cType
-                        coord = bsxfun(@times,A0(ind),...
-                            nodes(face(tmp,1),:))...
-                            +bsxfun(@times,A1(ind),...
-                            nodes(face(tmp,2),:))...
-                            +bsxfun(@times,1-A0(ind)-A1(ind),...
-                            nodes(face(tmp,3),:));
+                        coord = zeros(N, size(points, 2));
                     else
-                        coord = bsxfun(@times,A0(ind),...
-                            map.internal(face(tmp,1),:))...
-                            +bsxfun(@times,A1(ind),...
-                            map.internal(face(tmp,2),:))...
-                            +bsxfun(@times,1-A0(ind)-A1(ind),...
-                            map.internal(face(tmp,3),:));
+                        coord = zeros(N, size(map.internal, 2));
+                    end
+                    
+                    % maxLeng is maximal number of elements in array to create
+                    maxLeng = 100000000;
+                    maxPoints = floor(maxLeng / size(face, 1));
+                    dataLength = sum(points .^ 2, 2)';
+                    nodeLength = sum(face .^2, 2);
+                    for i = 1:maxPoints:N
+                        % Define last element for calculation
+                        last = i + maxPoints - 1;
+                        if last > N
+                            last = N;
+                        end
+                        % Prepare index
+                        ind = i:last;
+                    
+                        % Calculate projections
+                        A20 = bsxfun(@minus, Y2_20, points(ind, :) * Y20);
+                        A21 = bsxfun(@minus, Y2_21, points(ind, :) * Y21);
+                        A10 = bsxfun(@rdivide, bsxfun(@minus, A20 - A21,...
+                            Y2110), Y1010);
+                        A0 = bsxfun(@rdivide, bsxfun(@times, A20, Y2121)...
+                            -bsxfun(@times, A21, Y2120), denom);
+                        A1 = bsxfun(@rdivide, bsxfun(@times, A21, Y2020)...
+                            -bsxfun(@times, A20, Y2120), denom);
+                        A20 = bsxfun(@rdivide, A20, Y2020);
+                        A21 = bsxfun(@rdivide, A21, Y2121);
+
+                        % Normalize projections
+                        A20N = A20;
+                        A20N(A20N < 0) = 0;
+                        A20N(A20N > 1) = 1;
+                        A21N = A21;
+                        A21N(A21N < 0) = 0;
+                        A21N(A21N > 1) = 1;
+                        A10(A10 < 0) = 0;
+                        A10(A10 > 1) = 1;
+                        tmp = A0 < 0;
+                        A0(tmp) = 0;
+                        A1(tmp) = A21N(tmp);
+                        tmp = A1 < 0;
+                        A0(tmp) = A20N(tmp);
+                        A1(tmp) = 0;
+                        tmp = (1 - (A0 + A1)) < 0;
+                        A0(tmp) = A10(tmp);
+                        A1(tmp) = 1 - A10(tmp);
+                        
+                        % Calculate distances
+                        d = bsxfun(@plus, dataLength(ind)', Y2_2)...
+                            - 2 * points(ind, :) * Y2...
+                            + bsxfun(@times, A0, Y2020) .* (A0 - 2 * A20)...
+                            + bsxfun(@times, A1, Y2121) .* (A1 - 2 * A21)...
+                            + 2 * bsxfun(@times, A0 .* A1, Y2120);
+                    
+                        % Select the nearest face
+                        [dist(ind), tmp] = min(d,[],2);
+                        
+                        % Form index to find coordinates of projections
+                        ind2 = sub2ind(size(d),(1:last - i + 1)',tmp);
+                        
+                        % calculate coordinates
+                        if cType
+                            coord(ind, :) = bsxfun(@times, A0(ind2),...
+                                nodes(face(tmp, 1), :))...
+                                + bsxfun(@times, A1(ind2),...
+                                nodes(face(tmp, 2), :))...
+                                + bsxfun(@times, 1 - A0(ind2) - A1(ind2),...
+                                nodes(face(tmp, 3), :));
+                        else
+                            coord(ind, :) = bsxfun(@times, A0(ind2),...
+                                map.internal(face(tmp, 1), :))...
+                                + bsxfun(@times, A1(ind2),...
+                                map.internal(face(tmp, 2), :))...
+                                + bsxfun(@times, 1 - A0(ind2) - A1(ind2),...
+                                map.internal(face(tmp, 3), :));
+                        end
                     end
                 otherwise
                     error('unacceptable type or projections');
@@ -550,9 +587,30 @@ classdef MapGeometry  < handle
         %   klass is m-by-1 vector which contains number of nearest node
         %       for each data point.
             
-            dist = bsxfun(@plus, sum(data .^ 2, 2),...
-                sum(node .^2, 2)') - 2 * (data * node');
-            [dist, klas] = min(dist, [], 2);
+            % maxLeng is maximal number of elements in array to create 
+            maxLeng = 100000000; %800M
+            maxPoints = floor(maxLeng / size(node, 1));
+            dataLength = sum(data .^ 2, 2)';
+            nodeLength = sum(node .^2, 2);
+            n = size(data, 1);
+            klas = zeros(1, n);
+            dist = zeros(1, n);
+
+
+            for i = 1:maxPoints:n
+                % Define last element for calculation
+                last = i + maxPoints - 1;
+                if last > n
+                    last = n;
+                end
+                % Prepare index
+                ind = i:last;
+                % Calculate distances
+                d = bsxfun(@plus, dataLength(ind), nodeLength) - 2 * (node * data(ind,:)');
+                [dist(ind), klas(ind)] = min(d);
+            end
+            dist = dist';
+            klas = klas';
         end
         
         function newMap = extend(map, val, data)
