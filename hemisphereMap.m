@@ -103,7 +103,7 @@ classdef hemisphereMap < MapGeometry
             par = map.sizes(1);
             mer = map.sizes(2);
             % Create new map with greater size
-            newMap = rect2DMap(par + 1, mer);
+            newMap = hemisphereMap(par + 1, mer);
             newMap.disp = map.disp;       % dispersion measure for PQSQ approach
             newMap.preproc = map.preproc; % true if data were preprocessed
             newMap.means = map.means;     % mean of data otherwise.
@@ -122,7 +122,7 @@ classdef hemisphereMap < MapGeometry
                 preBord = bord - mer;
             end
             % Calculate new positions of the added nodes 
-            newMap(newBord, :) = 2 * map.mapped(bord, :) - map.mapped(preBord, :);
+            newMap.mapped(newBord, :) = 2 * map.mapped(bord, :) - map.mapped(preBord, :);
         end
         
         function res = getBorder(map)
