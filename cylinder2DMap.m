@@ -79,6 +79,10 @@ classdef cylinder2DMap < MapGeometry
             NM = N * M;
             % Create new map with greater size
             newMap = rect2DMap(N, M);
+            newMap.disp = map.disp;       % dispersion measure for PQSQ approach
+            newMap.preproc = map.preproc; % true if data were preprocessed
+            newMap.means = map.means;     % mean of data otherwise.
+            newMap.PCs = map.PCs;         % set of PCs otherwise.
             % Form list of old nodes
             ind = 1:NM;
             ind(newMap.getBorder) = [];

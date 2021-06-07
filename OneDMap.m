@@ -23,6 +23,10 @@ classdef OneDMap < MapGeometry
             n = map.sizes;
             % Create new map with greater size
             newMap = OneDMap(n + 2);
+            newMap.disp = map.disp;       % dispersion measure for PQSQ approach
+            newMap.preproc = map.preproc; % true if data were preprocessed
+            newMap.means = map.means;     % mean of data otherwise.
+            newMap.PCs = map.PCs;         % set of PCs otherwise.
             % Copy known positions of nodes into new map
             newMap.mapped(2:n + 1, :) = map.mapped;
             % Calculate positions of the first and last nodes
