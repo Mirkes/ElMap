@@ -4,7 +4,7 @@ It is Matlab implementation of well known Elastic map methodology for data visua
 
 Detailed description of this function can be found in the file <b>Elastic maps.docx</b> in the folder <b>doc</b>
 
-Please referr as
+Please refer as
 Mirkes E.M., Gorban, A.N. and Zinovyev, A.Y. ElMap: Matlab implementation of elastic map, available online (https://github.com/Mirkes/ElMap)
 
 ## Acknowledgements
