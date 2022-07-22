@@ -390,8 +390,8 @@ classdef MapGeometry  < handle
         %nearest face of map. Projection can be calculated in the internal
         %or mapped coordinates. There are three input arguments for this
         %method: set of point to project, type of projection (integer
-        %number) and coordinates space for projection: "internal or
-        %mapped.
+        %number) and coordinates space for projection: "internal" or
+        %"mapped".
         %
         %Inputs:
         %   map is MapGeometry object to use
