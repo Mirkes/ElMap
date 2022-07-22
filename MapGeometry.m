@@ -368,8 +368,8 @@ classdef MapGeometry  < handle
         %nearest face of map. Projection can be calculated in the internal
         %or mapped coordinates. There are three input arguments for this
         %method: set of point to project, type of projection (integer
-        %number) and coordinates space for projection: ‘internal’ or
-        %‘mapped’.
+        %number) and coordinates space for projection: Â‘internalÂ’ or
+        %Â‘mappedÂ’.
         %
         %Inputs:
         %   map is MapGeometry object to use
@@ -390,8 +390,8 @@ classdef MapGeometry  < handle
         %nearest face of map. Projection can be calculated in the internal
         %or mapped coordinates. There are three input arguments for this
         %method: set of point to project, type of projection (integer
-        %number) and coordinates space for projection: ‘internal’ or
-        %‘mapped’.
+        %number) and coordinates space for projection: Â‘internalÂ’ or
+        %Â‘mappedÂ’.
         %
         %Inputs:
         %   map is MapGeometry object to use
@@ -722,8 +722,7 @@ classdef MapGeometry  < handle
             frac = sum(tmp(list)) / size(data, 1);
         end
     end
-        
-    
+
     methods (Abstract)
         % Primitive extension of map - addition of one ribbon of nodes to
         % map in each direction
@@ -731,6 +730,4 @@ classdef MapGeometry  < handle
         % Form list of border nodes
         borders = getBorder(map)
     end
-    
 end
-
