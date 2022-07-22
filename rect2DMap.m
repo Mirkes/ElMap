@@ -1,5 +1,5 @@
 classdef rect2DMap < MapGeometry
-    %OneDMap is 2D rectangular map.
+    %rect2DMap is 2D rectangular map.
     %   Constructor contains two argument which are number of rows and
     %   number of columns
     
