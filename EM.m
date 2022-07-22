@@ -330,7 +330,7 @@ function potentialFunction = definePotentialFunction( x,...
 end
 
 function [A,B] = computeABcoefficients(intervals, potential_function_handle)
-%PQSQR_computeABcoefficients calculates the coefficients a and b for
+%computeABcoefficients calculates the coefficients a and b for
 %quadratic fragments of potential function.
 %   intervals is the 1-by-K matrix of intervals' boundaries without final
 %       infinit boundary.
