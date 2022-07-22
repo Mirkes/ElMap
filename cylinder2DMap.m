@@ -1,5 +1,5 @@
 classdef cylinder2DMap < MapGeometry
-    %OneDMap is descendant for piecewise linear map
+    %cylinder2DMap is descendant for piecewise linear map
     %   Constructor contains two argument which are number of rows and
     %   number of columns
     
