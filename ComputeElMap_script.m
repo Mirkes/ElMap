@@ -9,8 +9,10 @@ mape = extend(map,0.01,x);
 
 
 % Maps drawing
-drawMapInt(map, x, 2, 'coloring', 'density', 'drawData', false);
-drawMap(map, x, 'drawData', false);
+drawMapInt(mape, x, 2, 'coloring', 'density', 'drawData', false);
+print(gcf, '-dpng', '-noui', '-loose', 'MapInInternalCoordinates.png');
+drawMap(mape, x, 'drawData', false);
+print(gcf, '-dpng', '-noui', '-loose', 'MapEmbeddedToOriginalSpace.png');
 
 To use map outside of current software we can use following code
 Xp = project(mape,x,2,'internal');
